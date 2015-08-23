@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/python
 
 class foamLog:
     """Class to parse OpenFOAM log files"""
