@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import sys
 import os
-from pylab import *
+import matplotlib.pyplot as plt
 from foamlog import *
 
 if len(sys.argv) <= 1 or not os.path.isfile(sys.argv[1]):
@@ -36,35 +36,35 @@ nFigs = 0
 fname = '.'.join(fname.split('.')[:-1])
 if R:
     nFigs += 1
-    figure(nFigs); hold(True);
-    gcf().canvas.set_window_title('Residuals')
+    plt.figure(nFigs)
+    plt.gcf().canvas.set_window_title('Residuals')
     for var in log.Rvars():
-        semilogy(t[startStep:],R[var][startStep:])
-    xlabel('time')
-    ylabel('final residual')
-    legend(log.Rvars(),loc='best')
-    savefig(fname+'_residuals.png')
+        plt.semilogy(t[startStep:],R[var][startStep:])
+    plt.xlabel('time')
+    plt.ylabel('final residual')
+    plt.legend(log.Rvars(),loc='best')
+    plt.savefig(fname+'_residuals.png')
 
 if F:
     nFigs += 1
-    figure(nFigs); hold(True);
-    gcf().canvas.set_window_title('Forces')
+    plt.figure(nFigs)
+    plt.gcf().canvas.set_window_title('Forces')
     for var in log.Fvars():
-        plot(t[startStep:],F[var][startStep:])
-    xlabel('time')
-    ylabel('Forces')
-    legend(log.Fvars(),loc='best')
-    savefig(fname+'_forces.png')
+        plt.plot(t[startStep:],F[var][startStep:])
+    plt.xlabel('time')
+    plt.ylabel('Forces')
+    plt.legend(log.Fvars(),loc='best')
+    plt.savefig(fname+'_forces.png')
 
 if C:
     nFigs += 1
-    figure(nFigs); hold(True);
-    gcf().canvas.set_window_title('Airloads')
+    plt.figure(nFigs)
+    plt.gcf().canvas.set_window_title('Airloads')
     for var in log.Fvars():
-        plot(t[startStep:],C[var][startStep:])
-    xlabel('time')
-    ylabel('Aero Coefficients')
-    legend(log.Cvars(),loc='best')
-    savefig(fname+'_aeroCoeffs.png')
+        plt.plot(t[startStep:],C[var][startStep:])
+    plt.xlabel('time')
+    plt.ylabel('Aero Coefficients')
+    plt.legend(log.Cvars(),loc='best')
+    plt.savefig(fname+'_aeroCoeffs.png')
 
-if showFig: show()
+if showFig: plt.show()

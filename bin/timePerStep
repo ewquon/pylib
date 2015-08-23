@@ -49,7 +49,7 @@ print len(deltaTime),deltaTime
 print nsteps,'steps in',smartTime(clockTime[-1])
 print 'min/max/average clocktime:',np.min(deltaTime),np.max(deltaTime),np.mean(deltaTime)
 
-try:
-    from pylab import *
-    plot(t,deltaTime)
-except RuntimeError: pass
+#try:
+#    from pylab import *
+#    plot(t,deltaTime)
+#except RuntimeError: pass
