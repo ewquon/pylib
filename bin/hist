@@ -1,0 +1,70 @@
+#!/usr/bin/python
+import sys
+import os
+from pylab import *
+from foamlog import *
+
+if len(sys.argv) <= 1 or not os.path.isfile(sys.argv[1]):
+    fname = ''
+    try:
+        with open('system/controlDict','r') as f:
+            for line in f:
+                if 'application' in line:
+                    fname = line.split()[1]
+                    fname = fname.split(';')[0] + '.out'
+                    break
+    except IOError:
+        print 'could not open system/controlDict'
+    if fname=='': sys.exit('specify log file')
+    print 'Opening '+fname+'...'
+else:
+    fname = sys.argv[1]
+print 'Processing '+fname+'...'
+
+showFig = True
+if len(sys.argv) > 2 and sys.argv[2].strip()=='-save': showFig = False
+
+startStep = 0
+try:
+    startStep = int(sys.argv[-1]) - 1
+except: pass
+
+log = foamLog(fname)
+t,R,F,C = log.read() # resid, forces, aero coeffs
+
+nFigs = 0
+fname = '.'.join(fname.split('.')[:-1])
+if R:
+    nFigs += 1
+    figure(nFigs); hold(True);
+    gcf().canvas.set_window_title('Residuals')
+    for var in log.Rvars():
+        semilogy(t[startStep:],R[var][startStep:])
+    xlabel('time')
+    ylabel('final residual')
+    legend(log.Rvars(),loc='best')
+    savefig(fname+'_residuals.png')
+
+if F:
+    nFigs += 1
+    figure(nFigs); hold(True);
+    gcf().canvas.set_window_title('Forces')
+    for var in log.Fvars():
+        plot(t[startStep:],F[var][startStep:])
+    xlabel('time')
+    ylabel('Forces')
+    legend(log.Fvars(),loc='best')
+    savefig(fname+'_forces.png')
+
+if C:
+    nFigs += 1
+    figure(nFigs); hold(True);
+    gcf().canvas.set_window_title('Airloads')
+    for var in log.Fvars():
+        plot(t[startStep:],C[var][startStep:])
+    xlabel('time')
+    ylabel('Aero Coefficients')
+    legend(log.Cvars(),loc='best')
+    savefig(fname+'_aeroCoeffs.png')
+
+if showFig: show()
