@@ -1,0 +1,55 @@
+#!/usr/local/bin/python
+import sys
+import numpy as np
+from myutils import smartTime
+
+logfile = ''
+app = ''
+with open('system/controlDict','r') as f:
+    for line in f:
+	if line.strip().startswith('application'):
+	    app = line.split()[1].split(';')[0]
+        elif line.strip().startswith('deltaT'): 
+            dt = float(line.split()[1][:-1])
+        elif line.strip().startswith('endTime'): 
+            tEnd = float(line.split()[1][:-1])
+
+if len(sys.argv) <= 1:
+    if app: logfile = app+'.out'
+else:
+    logfile = sys.argv[1]
+
+#-------------------------------------------------
+
+nsteps = 0
+with open(logfile,'r') as f:
+    for line in f:
+        if 'ClockTime' in line: nsteps += 1
+
+t = np.zeros((nsteps))
+clockTime = np.zeros((nsteps))
+istep = -1
+with open(logfile,'r') as f:
+    for line in f:
+        if line.startswith('Time ='):
+            istep += 1
+            try:
+                t[istep] = float(line.split()[2])
+            except IndexError: pass
+        elif 'ClockTime' in line:
+            vals = line.split()
+            assert(vals[-1]=='s')
+            assert(vals[-3]=='=')
+            clockTime[istep] = float(vals[-2])
+
+clockTime0 = np.zeros((nsteps))
+clockTime0[1:] = clockTime[:-1]
+deltaTime = clockTime - clockTime0
+print len(deltaTime),deltaTime
+print nsteps,'steps in',smartTime(clockTime[-1])
+print 'min/max/average clocktime:',np.min(deltaTime),np.max(deltaTime),np.mean(deltaTime)
+
+try:
+    from pylab import *
+    plot(t,deltaTime)
+except RuntimeError: pass
