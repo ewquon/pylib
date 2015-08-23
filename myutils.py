@@ -11,7 +11,8 @@ def smartTime(t):
     while t > threshold and i < len(tUnit)-1:
         t /= tConv[i]
         i += 1
-    return '{:.1f} {}'.format(t,tUnit[i])
+    #return '{:.1f} {}'.format(t,tUnit[i])
+    return '%.1f %s' % (t,tUnit[i]) # old format, for compatibility
 
 #-------------------------------------------------------------------------------
 def read_generic_data(fname,delim=None,headerLines=0,cast=None):
