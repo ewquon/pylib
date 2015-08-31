@@ -3,6 +3,8 @@ import sys
 import shlex #for smart splitting to preserve enquoted text
 from pylab import *
 
+plotSymbols = False
+
 if len(sys.argv) <= 1:
     print 'USAGE: ', sys.argv[0],'data_file [col1 col2 ...]'
     print '    where data_file has data in columns with an optional one-line header.'
@@ -64,17 +66,12 @@ if len(sys.argv[2:]) > 0:
 else: plotlist = range(1,Nvar+1)
 print 'Plotting variables:',[varNames[v] for v in plotlist]
 
-#DEBUG
-#for v in plotlist:
-#    print data[v]
-
 legendStrs = []
 for var in plotlist:
-    plot(data[0],data[var],'s-')
+    if plotSymbols: plot(data[0],data[var],'s-')
+    else: plot(data[0],data[var])
     legendStrs.append(varNames[var])
 xlabel(varNames[0])
-#ylabel('y')
-if Nvar > 1:
-    legend(legendStrs,loc='best')
+if Nvar>1: legend(legendStrs,loc='best')
 show()
 
