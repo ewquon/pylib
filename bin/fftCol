@@ -76,7 +76,11 @@ dataAxes.plot(data[0],data[selectedVar],'s-')
 xlabel('t [s]')
 ylabel('signal')
 
+#=========================================================================================
+# begin FFT code
+#
 selectedPoints = []
+selectedLines = []
 dt = data[0][1] - data[0][0]
 print 'dt =',dt
 fftAxes = fig.add_subplot(212)
@@ -84,7 +88,9 @@ def onClick(event):
     #print 'button=%d, x=%d, y=%d, xdata=%f, ydata=%f' % \
     #    (event.button, event.x, event.y, event.xdata, event.ydata)
     if event.button==2: # middle click
-        print 'Searching for point near %f,%f' % (event.xdata,event.ydata)
+        try:
+            print 'Searching for point near %f,%f' % (event.xdata,event.ydata)
+        except: return
         idx = np.argmin(np.abs( data[0] - event.xdata ))
         selectedPoints.append(idx)
         print '  - found point at %f,%f' % (data[0][idx],data[selectedVar][idx])
@@ -96,6 +102,8 @@ def onClick(event):
             print '    dy =',data[selectedVar][idx1]-data[selectedVar][idx0]
             Nfft = idx1 - idx0
             print '    Nfft =',Nfft
+            if Nfft==0: return
+
             signal = data[selectedVar][idx0:idx1]
             f = np.fft.fftfreq(Nfft,dt)
             F = np.fft.fft(signal)/Nfft
@@ -107,8 +115,25 @@ def onClick(event):
             fftAxes.plot(f[1:Nfft/2],P[1:Nfft/2])
             xlabel('f [Hz]')
             ylabel('power')
+
+            #for line in selectedLines: line.remove()
+            while len(selectedLines) > 0:
+                dataAxes.lines.remove( selectedLines.pop(0) )
+            selectedLines.append( \
+                dataAxes.plot(data[0][selectedPoints[-2]],data[selectedVar][selectedPoints[-2]],\
+                    'go', markersize=14)[0] )
+            selectedLines.append( \
+                dataAxes.plot(data[0][selectedPoints[-1]],data[selectedVar][selectedPoints[-1]],\
+                    'r^', markersize=14)[0] )
+            selectedLines.append( \
+                dataAxes.plot(data[0][idx0:idx1],data[selectedVar][idx0:idx1],\
+                    'k-', linewidth=2)[0] )
+
             draw()
 
 cid = fig.canvas.mpl_connect('button_press_event', onClick)
+# end FFT code
+#=========================================================================================
+
 show()
 
