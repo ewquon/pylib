@@ -108,13 +108,14 @@ def onClick(event):
             f = np.fft.fftfreq(Nfft,dt)
             F = np.fft.fft(signal)/Nfft
             P = np.abs(F)**2
-            imax = np.argmax(P[1:]) + 1
+            imax = np.argmax(P[1:Nfft/2]) + 1
             print '    fmax =',f[imax],'Hz'
             fftAxes.cla()
             #fftAxes.plot(f[:Nfft/2],np.abs(F[:Nfft/2])**2)
             fftAxes.plot(f[1:Nfft/2],P[1:Nfft/2])
             xlabel('f [Hz]')
             ylabel('power')
+            draw()
 
             #for line in selectedLines: line.remove()
             while len(selectedLines) > 0:
@@ -128,7 +129,6 @@ def onClick(event):
             selectedLines.append( \
                 dataAxes.plot(data[0][idx0:idx1],data[selectedVar][idx0:idx1],\
                     'k-', linewidth=2)[0] )
-
             draw()
 
 cid = fig.canvas.mpl_connect('button_press_event', onClick)
