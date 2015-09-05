@@ -18,7 +18,9 @@ extMapping = dict()
 extMapping['xy'] = 'xyz'
 
 def tname(tval):
-    return '%d' % (tval*10)
+    # note: paraview doesn't seem to handle floats well...
+    #return '%d' % (tval*10)
+    return '%d' % (tval*1000)
 
 #-----------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------
@@ -40,6 +42,7 @@ for timestep_dir in dirlist:
         var = fbasename[-1]
         name = '_'.join(fbasename[0:-1])
         print ' ',f,'( name=',name,' var=',var,' ext=',ext,')'
+        if name=='': name = 'timeSeries'
         if not name in sampleNames:
             sampleNames.append(name)
             if not os.path.exists(name): os.makedirs(name)
@@ -59,10 +62,14 @@ for sample in sampleNames:
     for var in varNames:
         for i in range(len(timesteps)):
             dname = dirlist[indices[i]]#.split()
-            src = os.getcwd() + os.sep + dname + os.sep + sample+'_'+var+'.'+ext
-            #dest = sample + os.sep + '%s_%d.vtk'%(var,i+1)
-            #dest = sample + os.sep + '%s_%g.%s'%(var,timesteps[i],extNew)
-            dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[i]),extNew)
+            if sample=='timeSeries':
+                src = os.getcwd() + os.sep + dname + os.sep + var+'.'+ext
+                dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[i]),extNew)
+            else:
+                src = os.getcwd() + os.sep + dname + os.sep + sample+'_'+var+'.'+ext
+                #dest = sample + os.sep + '%s_%d.vtk'%(var,i+1)
+                #dest = sample + os.sep + '%s_%g.%s'%(var,timesteps[i],extNew)
+                dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[i]),extNew)
             print dest,'-->',src
             os.symlink(src,dest)
 
