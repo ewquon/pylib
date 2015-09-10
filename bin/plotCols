@@ -4,6 +4,7 @@ import shlex #for smart splitting to preserve enquoted text
 from pylab import *
 
 plotSymbols = False
+savePlot = True
 
 if len(sys.argv) <= 1:
     print 'USAGE: ', sys.argv[0],'data_file [col1 col2 ...]'
@@ -73,5 +74,10 @@ for var in plotlist:
     legendStrs.append(varNames[var])
 xlabel(varNames[0])
 if Nvar>1: legend(legendStrs,loc='best')
+
+if savePlot: 
+    fname = '.'.join(sys.argv[1].split('.')[:-1])
+    for var in plotlist: fname += '_' + str(var)
+    savefig(fname+'.png')
 show()
 
