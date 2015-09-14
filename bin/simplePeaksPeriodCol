@@ -1,0 +1,111 @@
+#!/usr/local/bin/python
+import sys
+import shlex #for smart splitting to preserve enquoted text
+from pylab import *
+import numpy as np
+
+if len(sys.argv) <= 2:
+    print 'USAGE: ', sys.argv[0],'data_file [columnNumber]'
+    print '    where data_file has data in columns with an optional one-line header.'
+    print '    Data are delimited by white-space. The first column is assumed to be'
+    print '    the independent variable'
+    sys.exit()
+
+# stop reading file if change in any of the data values is > THRESHOLD
+#THRESHOLD = 9e9
+#THRESHOLD = 1e3
+#THRESHOLD = 10
+
+TOL = 1e-5
+
+data = []
+with open(sys.argv[1]) as f:
+
+    #line = f.readline().split()
+    line = shlex.split(f.readline())
+    print line
+    Nvar = len(line) - 1
+    try:
+        float(line[0]) # first line is data
+        varNames = ['x'] + ['y'+str(i) for i in range(1,Nvar+1)]
+    except ValueError: # first line is header
+        varNames = line
+        line = f.readline().split()
+    print Nvar,'dependent variables in file :',varNames
+
+    # save first line of data
+    for val in line:
+        data.append([float(val)])
+
+    # read rest of file
+    #prevValues = []
+    for line in f:
+        values = [float(s) for s in line.split()]
+        # save data
+        for col,val in zip(data,values):
+            col.append(float(val))
+        #prevValues = values
+
+if Nvar==0: #single column of data
+    Nvar = 1
+    N = len(data[0])
+    data = [range(1,N+1), data[0]]
+    varNames += ['y']
+
+selectedVar = int(sys.argv[2])
+print 'Plotting variable:',varNames[selectedVar]
+
+#fig = figure()
+#dataAxes = fig.add_subplot(111)
+#dataAxes.plot(data[0],data[selectedVar],'-')
+plot(data[0],data[selectedVar],'-')
+xlabel('t [s]')
+ylabel('signal')
+
+
+# find peaks now
+
+if len(sys.argv) > 3: 
+    windowSize = float(sys.argv[3])
+    dt = data[0][1]-data[0][0]
+    nGrab = int(windowSize/dt)
+    print 'Window size:',windowSize,' (',nGrab,'samples )'
+else:
+    nGrab = 10
+    print 'Sample size:',nGrab
+
+lastMean = -1
+currMean = -1
+foundPeaks = []
+idx = 0
+#for idx in range(len(data[0])-nGrab):
+while idx <= len(data[0])-nGrab:
+    trange = data[0][idx:idx+nGrab]
+    frange = data[selectedVar][idx:idx+nGrab]
+    imax = np.argmax(frange)
+    if imax > 0 and imax < nGrab-1: # local maximum
+        #print frange
+        foundPeaks.append(trange[imax])
+        plot(trange[imax],frange[imax],'rs')
+        if len(foundPeaks) > 1:
+            T = np.diff(foundPeaks)
+            print 'detected peaks:',foundPeaks
+            if len(foundPeaks) > 2: 
+                lastMean = currMean
+                currMean = np.mean(T)
+                deltaMean = currMean - lastMean
+                print 'current/delta mean:',currMean,deltaMean
+                if np.abs(deltaMean) < TOL and len(foundPeaks) > 5: break
+            else:
+                currMean = np.mean(T)
+        idx += nGrab
+    else:
+        idx += 1
+
+print 'detected intervals:',np.diff(foundPeaks)
+titleStr = 'estimated frequency : '+str(1./currMean)+' Hz'
+print titleStr
+title(titleStr)
+       
+show()
+

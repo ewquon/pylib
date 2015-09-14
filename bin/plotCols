@@ -4,7 +4,7 @@ import shlex #for smart splitting to preserve enquoted text
 from pylab import *
 
 plotSymbols = False
-savePlot = True
+savePlot = False
 
 if len(sys.argv) <= 1:
     print 'USAGE: ', sys.argv[0],'data_file [col1 col2 ...]'
