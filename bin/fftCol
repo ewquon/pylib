@@ -110,6 +110,7 @@ def onClick(event):
             P = np.abs(F)**2
             imax = np.argmax(P[1:Nfft/2]) + 1
             print '    fmax =',f[imax],'Hz'
+            print '    signal mean =',F[0]
             fftAxes.cla()
             #fftAxes.plot(f[:Nfft/2],np.abs(F[:Nfft/2])**2)
             fftAxes.plot(f[1:Nfft/2],P[1:Nfft/2])

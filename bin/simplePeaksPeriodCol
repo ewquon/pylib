@@ -76,12 +76,12 @@ logDecr = []
 idx = 0
 #for idx in range(len(data[0])-nGrab):
 while idx <= len(data[0])-nGrab:
-    print 'search indices ',idx,':',idx+nGrab-1
+    if VERBOSE: print 'search indices ',idx,':',idx+nGrab-1
     trange = data[0][idx:idx+nGrab]
     frange = data[selectedVar][idx:idx+nGrab]
     imax = np.argmax(frange)
     if imax > 0 and imax < nGrab-1: # local maximum
-        print '  imax=',imax+idx
+        if VERBOSE: print '  imax=',imax+idx
         #print frange
         foundPeaks.append(trange[imax])
         plot(trange[imax],frange[imax],'rs')
@@ -93,7 +93,7 @@ while idx <= len(data[0])-nGrab:
                 lastMean = currMean
                 currMean = np.mean(T)
                 deltaMean = currMean - lastMean
-                print 'current/delta mean:',currMean,deltaMean
+                print 'current/delta mean period:',currMean,deltaMean
                 if np.abs(deltaMean) < TOL and len(foundPeaks) > 5: break
             else:
                 currMean = np.mean(T)
