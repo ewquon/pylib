@@ -66,17 +66,16 @@ ylabel('signal')
 # find peaks now
 
 if len(sys.argv) > 3: 
-    windowSize = float(sys.argv[3])
-    dt = data[0][1]-data[0][0]
-    nGrab = int(windowSize/dt)
-    print 'Window size:',windowSize,' (',nGrab,'samples )'
+    ngrab = int(sys.argv[3])
 else:
     nGrab = 10
-    print 'Sample size:',nGrab
+print 'Sample size:',nGrab
 
 lastMean = -1
 currMean = -1
+lastPeak = -1
 foundPeaks = []
+logDecr = []
 idx = 0
 #for idx in range(len(data[0])-nGrab):
 while idx <= len(data[0])-nGrab:
@@ -90,6 +89,7 @@ while idx <= len(data[0])-nGrab:
         if len(foundPeaks) > 1:
             T = np.diff(foundPeaks)
             print 'detected peaks:',foundPeaks
+            logDecr.append(np.log(frange[imax]/lastPeak))
             if len(foundPeaks) > 2: 
                 lastMean = currMean
                 currMean = np.mean(T)
@@ -98,6 +98,7 @@ while idx <= len(data[0])-nGrab:
                 if np.abs(deltaMean) < TOL and len(foundPeaks) > 5: break
             else:
                 currMean = np.mean(T)
+        lastPeak = frange[imax]
         idx += nGrab
     else:
         idx += 1
@@ -105,6 +106,8 @@ while idx <= len(data[0])-nGrab:
 print 'detected intervals:',np.diff(foundPeaks)
 titleStr = 'estimated frequency : '+str(1./currMean)+' Hz'
 print titleStr
+print 'calculated log decrements',logDecr
+print '  mean/min/max :',np.mean(logDecr),np.min(logDecr),np.max(logDecr)
 title(titleStr)
        
 show()
