@@ -5,16 +5,13 @@ from pylab import *
 import numpy as np
 
 if len(sys.argv) <= 2:
-    print 'USAGE: ', sys.argv[0],'data_file [columnNumber]'
+    print 'USAGE: ', sys.argv[0],'data_file columnNumber [nSamplePoints]'
     print '    where data_file has data in columns with an optional one-line header.'
     print '    Data are delimited by white-space. The first column is assumed to be'
     print '    the independent variable'
     sys.exit()
 
-# stop reading file if change in any of the data values is > THRESHOLD
-#THRESHOLD = 9e9
-#THRESHOLD = 1e3
-#THRESHOLD = 10
+VERBOSE = False
 
 TOL = 1e-5
 
@@ -66,7 +63,7 @@ ylabel('signal')
 # find peaks now
 
 if len(sys.argv) > 3: 
-    ngrab = int(sys.argv[3])
+    nGrab = int(sys.argv[3])
 else:
     nGrab = 10
 print 'Sample size:',nGrab
@@ -79,16 +76,18 @@ logDecr = []
 idx = 0
 #for idx in range(len(data[0])-nGrab):
 while idx <= len(data[0])-nGrab:
+    print 'search indices ',idx,':',idx+nGrab-1
     trange = data[0][idx:idx+nGrab]
     frange = data[selectedVar][idx:idx+nGrab]
     imax = np.argmax(frange)
     if imax > 0 and imax < nGrab-1: # local maximum
+        print '  imax=',imax+idx
         #print frange
         foundPeaks.append(trange[imax])
         plot(trange[imax],frange[imax],'rs')
         if len(foundPeaks) > 1:
             T = np.diff(foundPeaks)
-            print 'detected peaks:',foundPeaks
+            if VERBOSE: print 'detected peaks:',foundPeaks
             logDecr.append(np.log(frange[imax]/lastPeak))
             if len(foundPeaks) > 2: 
                 lastMean = currMean
@@ -101,14 +100,19 @@ while idx <= len(data[0])-nGrab:
         lastPeak = frange[imax]
         idx += nGrab
     else:
-        idx += 1
+        #idx += 1
+        idx += nGrab/2 # faster
 
 print 'detected intervals:',np.diff(foundPeaks)
 titleStr = 'estimated frequency : '+str(1./currMean)+' Hz'
 print titleStr
-print 'calculated log decrements',logDecr
-print '  mean/min/max :',np.mean(logDecr),np.min(logDecr),np.max(logDecr)
 title(titleStr)
+
+if VERBOSE:
+    print 'calculated log decrements',logDecr
+    print '  mean/min/max :',np.mean(logDecr),np.min(logDecr),np.max(logDecr)
+else:
+    print 'log decrement mean/min/max :',np.mean(logDecr),np.min(logDecr),np.max(logDecr)
        
 show()
 
