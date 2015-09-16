@@ -19,6 +19,7 @@ def new():
 
 def plot(fname, plotlist=[], legendnames=[], \
          xname='x', \
+         title='', \
          symbols='', \
          savefig='', \
          verbose=False):
@@ -78,11 +79,18 @@ def plot(fname, plotlist=[], legendnames=[], \
         curAxes.plot(data[0],data[var],symbols+'-',label=lstr)
     curAxes.legend(loc='best')
     curAxes.set_xlabel(varNames[0])
+    curAxes.set_title(title)
 
     if not savefig=='':
         plt.savefig(savefig)
 
     plt.gcf().canvas.draw()
+
+
+def title(tstr):
+    global curFig, curAxes
+    curAxes.set_title(tstr)
+    curFig.canvas.draw()
 
 ################################################################################
 if __name__ == "__main__":
