@@ -8,12 +8,13 @@ import matplotlib.pyplot as plt
 #THRESHOLD = 1e3
 #THRESHOLD = 10
 
+curFig = None
 curAxes = None
 
 def new():
-    global curAxes
-    fig = plt.figure()
-    curAxes = fig.add_subplot(111)
+    global curFig, curAxes
+    curFig = plt.figure()
+    curAxes = curFig.add_subplot(111)
     plt.show(block=False)
 
 def plot(fname, plotlist=[], legendnames=[], \
@@ -21,8 +22,8 @@ def plot(fname, plotlist=[], legendnames=[], \
          symbols='', \
          savefig='', \
          verbose=False):
-    global curAxes
-    if curAxes==None: new()
+    global curFig,curAxes
+    if curAxes==None or not plt.fignum_exists(curFig.number): new()
 
     data = []
     with open(fname) as f:
