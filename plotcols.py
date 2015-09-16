@@ -3,9 +3,6 @@ import sys
 import shlex #for smart splitting to preserve enquoted text
 import matplotlib.pyplot as plt
 
-#plotSymbols = False
-#savePlot = False
-
 # stop reading file if change in any of the data values is > THRESHOLD
 #THRESHOLD = 9e9
 #THRESHOLD = 1e3
@@ -30,7 +27,7 @@ def plot(fname, plotlist=[], legendnames=[], \
     data = []
     with open(fname) as f:
 
-        #line = f.readline().split()
+        # check for single header line, quoted strings okay
         line = shlex.split(f.readline())
         if verbose: print line
         Nvar = len(line) - 1
@@ -70,32 +67,20 @@ def plot(fname, plotlist=[], legendnames=[], \
         varNames += ['y']
 
     # allow specification of specific columns to plot
-#    if len(sys.argv[2:]) > 0: 
-#        plotlist = [int(var) for var in sys.argv[2:]]
-#    else: plotlist = range(1,Nvar+1)
     if len(plotlist)==0: plotlist = range(1,Nvar+1)
     if verbose: print 'Plotting variables:',[varNames[v] for v in plotlist]
 
-    if len(legendnames) > 0: 
-        customLegend = True
-    else:
+    if len(legendnames)==0:
         legendnames = [ varNames[var] for var in plotlist ]
-        customLegend = False
 
     for var,lstr in zip(plotlist,legendnames):
         curAxes.plot(data[0],data[var],symbols+'-',label=lstr)
-    if Nvar>1 or customLegend: 
-        curAxes.legend(loc='best')
+    curAxes.legend(loc='best')
     curAxes.set_xlabel(varNames[0])
 
-    #if savePlot: 
-    #    fname = '.'.join(sys.argv[1].split('.')[:-1])
-    #    for var in plotlist: fname += '_' + str(var)
-    #    plt.savefig(fname+'.png')
     if not savefig=='':
         plt.savefig(savefig)
 
-    #plt.show(block=False)
     plt.gcf().canvas.draw()
 
 ################################################################################
