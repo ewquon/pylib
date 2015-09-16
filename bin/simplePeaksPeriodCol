@@ -93,7 +93,7 @@ while idx <= len(data[0])-nGrab:
                 lastMean = currMean
                 currMean = np.mean(T)
                 deltaMean = currMean - lastMean
-                print 'current/delta mean period:',currMean,deltaMean
+                if VERBOSE: print 'current/delta mean period:',currMean,deltaMean
                 if np.abs(deltaMean) < TOL and len(foundPeaks) > 5: break
             else:
                 currMean = np.mean(T)
