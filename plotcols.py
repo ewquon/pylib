@@ -11,7 +11,21 @@ import matplotlib.pyplot as plt
 #THRESHOLD = 1e3
 #THRESHOLD = 10
 
-def plot(fname,plotlist=[],legendstrs=[],verbose=False,savefig='',symbols=False,xname='x'):
+curAxes = None
+
+def new():
+    global curAxes
+    fig = plt.figure()
+    curAxes = fig.add_subplot(111)
+    plt.show(block=False)
+
+def plot(fname, plotlist=[], legendnames=[], \
+         xname='x', \
+         symbols='', \
+         savefig='', \
+         verbose=False):
+    global curAxes
+    if curAxes==None: new()
 
     data = []
     with open(fname) as f:
@@ -62,20 +76,17 @@ def plot(fname,plotlist=[],legendstrs=[],verbose=False,savefig='',symbols=False,
     if len(plotlist)==0: plotlist = range(1,Nvar+1)
     if verbose: print 'Plotting variables:',[varNames[v] for v in plotlist]
 
-    if len(legendstrs) > 0: 
+    if len(legendnames) > 0: 
         customLegend = True
     else:
-        legendstrs = []
+        legendnames = [ varNames[var] for var in plotlist ]
         customLegend = False
 
-    for var in plotlist:
-        if symbols: 
-            plt.plot(data[0],data[var],'s-')
-        else: 
-            plt.plot(data[0],data[var])
-        if not customLegend: legendstrs.append(varNames[var])
-    plt.xlabel(varNames[0])
-    if Nvar>1 or customLegend: plt.legend(legendstrs,loc='best')
+    for var,lstr in zip(plotlist,legendnames):
+        curAxes.plot(data[0],data[var],symbols+'-',label=lstr)
+    if Nvar>1 or customLegend: 
+        curAxes.legend(loc='best')
+    curAxes.set_xlabel(varNames[0])
 
     #if savePlot: 
     #    fname = '.'.join(sys.argv[1].split('.')[:-1])
@@ -84,7 +95,8 @@ def plot(fname,plotlist=[],legendstrs=[],verbose=False,savefig='',symbols=False,
     if not savefig=='':
         plt.savefig(savefig)
 
-    plt.show()
+    #plt.show(block=False)
+    plt.gcf().canvas.draw()
 
 ################################################################################
 if __name__ == "__main__":
