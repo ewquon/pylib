@@ -1,32 +1,32 @@
 #!/usr/local/bin/python
 import sys
 import shlex #for smart splitting to preserve enquoted text
-from pylab import *
+import matplotlib.pyplot as plt
 
-plotSymbols = False
-savePlot = False
+#plotSymbols = False
+#savePlot = False
 
 # stop reading file if change in any of the data values is > THRESHOLD
 #THRESHOLD = 9e9
 #THRESHOLD = 1e3
 #THRESHOLD = 10
 
-def plot(fname,plotlist):
+def plot(fname,plotlist=[],legendstrs=[],verbose=False,savefig='',symbols=False,xname='x'):
 
     data = []
     with open(fname) as f:
 
         #line = f.readline().split()
         line = shlex.split(f.readline())
-        print line
+        if verbose: print line
         Nvar = len(line) - 1
         try:
             float(line[0]) # first line is data
-            varNames = ['x'] + ['y'+str(i) for i in range(1,Nvar+1)]
+            varNames = [xname] + ['y'+str(i) for i in range(1,Nvar+1)]
         except ValueError: # first line is header
             varNames = line
             line = f.readline().split()
-        print Nvar,'dependent variables in file :',varNames
+        if verbose: print Nvar,'dependent variables in file :',varNames
 
         # save first line of data
         for val in line:
@@ -60,21 +60,31 @@ def plot(fname,plotlist):
 #        plotlist = [int(var) for var in sys.argv[2:]]
 #    else: plotlist = range(1,Nvar+1)
     if len(plotlist)==0: plotlist = range(1,Nvar+1)
-    print 'Plotting variables:',[varNames[v] for v in plotlist]
+    if verbose: print 'Plotting variables:',[varNames[v] for v in plotlist]
 
-    legendStrs = []
+    if len(legendstrs) > 0: 
+        customLegend = True
+    else:
+        legendstrs = []
+        customLegend = False
+
     for var in plotlist:
-        if plotSymbols: plot(data[0],data[var],'s-')
-        else: plot(data[0],data[var])
-        legendStrs.append(varNames[var])
-    xlabel(varNames[0])
-    if Nvar>1: legend(legendStrs,loc='best')
+        if symbols: 
+            plt.plot(data[0],data[var],'s-')
+        else: 
+            plt.plot(data[0],data[var])
+        if not customLegend: legendstrs.append(varNames[var])
+    plt.xlabel(varNames[0])
+    if Nvar>1 or customLegend: plt.legend(legendstrs,loc='best')
 
-    if savePlot: 
-        fname = '.'.join(sys.argv[1].split('.')[:-1])
-        for var in plotlist: fname += '_' + str(var)
-        savefig(fname+'.png')
-    show()
+    #if savePlot: 
+    #    fname = '.'.join(sys.argv[1].split('.')[:-1])
+    #    for var in plotlist: fname += '_' + str(var)
+    #    plt.savefig(fname+'.png')
+    if not savefig=='':
+        plt.savefig(savefig)
+
+    plt.show()
 
 ################################################################################
 if __name__ == "__main__":
