@@ -105,3 +105,4 @@ if __name__ == "__main__":
 
     plotlist = [int(var) for var in sys.argv[2:]]
     plot( sys.argv[1], plotlist )
+    plt.show(block=True)
