@@ -69,7 +69,10 @@ def plot(fname, plotlist=[], legendnames=[], \
         varNames += ['y']
 
     # allow specification of specific columns to plot
-    if len(plotlist)==0: plotlist = range(1,Nvar+1)
+    try:
+        if len(plotlist)==0: plotlist = range(1,Nvar+1)
+    except TypeError:
+        plotlist = [plotlist]
     if verbose: print 'Plotting variables:',[varNames[v] for v in plotlist]
 
     if len(legendnames)==0:

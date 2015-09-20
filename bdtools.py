@@ -34,7 +34,7 @@ def plotLoad(varnames,fname='load.out'):
     plotcols.plot(fname,cols,varnames,xname='t',title=fname)
 
 # in the IEC ref frame
-def plotDisp(varnames,fname='disp.out'):
+def plotDisp(varnames,fname='rel_disp.out'):
     cols = []
     for name in varnames:
         dispType = name[0]
@@ -65,48 +65,58 @@ def read_beam_input(searchStr,thenSkip=0,fname='beam.input.sum'):
 #---------------------------------------------------------------
 # section plots
 
-def plotSectionLoads(varname,sections,fname='load.out'):
+def plotSectionLoads(varnames,sections=[],fname='load.out'):
     global GLLpts
     if len(GLLpts)==0: GLLpts = read_beam_input('Quadrature point')[1]
 
-    cols = []
-    for sect in sections:
-        cols.append( 6*(sect-1) + colMap[varname] )
+    if len(sections)==0: sections = range(len(GLLpts))
 
-    plt.figure()
-    with open(fname,'r') as f:
-        for line in f:
+    for varname in varnames:
+        cols = []
+        for sect in sections:
+            cols.append( 6*(sect-1) + colMap[varname] )
+
+        #plt.figure()
+        with open(fname,'r') as f:
+            for line in f: pass # plot latest only
             line = line.split()
             plt.plot([ GLLpts[i] for i in sections ], \
                      [ line[i] for i in cols ], \
-                     color='0.5'
+                     label=varname
+                     #color='0.5'
                     )
 
     plt.xlabel('x')
-    plt.ylabel(varname)
+    #plt.ylabel(varname)
     plt.title(fname)
+    plt.legend(loc='best')
     plt.show(block=False)
 
 
-def plotSectionDisp(varname,nodes,fname='disp.out'):
+def plotSectionDisp(varnames,nodes=[],fname='rel_disp.out'):
     global beamnodes
     if len(beamnodes)==0: beamnodes = read_beam_input('Initial pos',thenSkip=1)[1]
 
-    cols = []
-    for node in nodes:
-        cols.append( 6*(node-1) + colMap[varname] )
+    if len(nodes)==0: nodes = range(len(beamnodes))
 
-    plt.figure()
-    with open(fname,'r') as f:
-        for line in f:
+    for varname in varnames:
+        cols = []
+        for node in nodes:
+            cols.append( 6*(node-1) + colMap[varname] )
+
+        #plt.figure()
+        with open(fname,'r') as f:
+            for line in f: pass # plot latest only
             line = line.split()
             plt.plot([ beamnodes[i] for i in nodes ], \
                      [ line[i] for i in cols ], \
-                     color='0.5'
+                     label=varname
+                     #color='0.5'
                     )
 
     plt.xlabel('x')
-    plt.ylabel(varname)
+    #plt.ylabel(varname)
     plt.title(fname)
+    plt.legend(loc='best')
     plt.show(block=False)
 
