@@ -73,7 +73,7 @@ def plot(fname, plotlist=[], legendnames=[], \
         if len(plotlist)==0: plotlist = range(1,Nvar+1)
     except TypeError:
         plotlist = [plotlist]
-    if verbose: print 'Plotting variables:',[varNames[v] for v in plotlist]
+    if verbose: print 'Plotting variables:',[varNames[var] for var in plotlist]
 
     if len(legendnames)==0:
         legendnames = [ varNames[var] for var in plotlist ]

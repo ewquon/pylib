@@ -26,7 +26,7 @@ class foamLog:
         self.varlist = []
 
 # TODO: CLEAN UP THIS IMPLEMENTATION, AND/OR READ FROM postProcessing/*
-    def read(self):
+    def read(self,skipVars=[]):
         N=0
         readForces = False
         readMoments = False
@@ -41,6 +41,7 @@ class foamLog:
                 elif self.solveStr in line:
                     varline = line.split(self.solveStr)[1]
                     var = varline.split(',')[0]
+                    if var in skipVars: continue
 
                     valline = line.split(self.residStr)[1]
                     val = float(valline.split(',')[0])
