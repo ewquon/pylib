@@ -99,12 +99,20 @@ def title(tstr):
 if __name__ == "__main__":
 
     if len(sys.argv) <= 1:
-        print 'USAGE: ', sys.argv[0],'data_file [col1 col2 ...]'
+        print 'USAGE: ', sys.argv[0],'data_file [col1 col2 ...] [-save imageName.png]'
         print '    where data_file has data in columns with an optional one-line header.'
         print '    Data are delimited by white-space. The first column is assumed to be'
         print '    the independent variable, and an optional list of dependent data'
         print '    columns may be specified for plotting.'
         sys.exit()
+
+    savename=''
+    for i in range(1,len(sys.argv)):
+        if sys.argv[i]=='-save':
+            sys.argv.pop(i)
+            savename = sys.argv.pop(i)
+            #print 'saving file to',savename
+            break
 
     #plotlist = [int(var) for var in sys.argv[2:]]
     plotlist = []
@@ -116,6 +124,6 @@ if __name__ == "__main__":
             style += var
     if style=='': style = '-'
 
-    plot( sys.argv[1], plotlist, style=style )
+    plot( sys.argv[1], plotlist, style=style, savefig=savename )
     #plt.show(block=True)
-    plt.show()
+    if not savename: plt.show()
