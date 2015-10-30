@@ -29,9 +29,9 @@ try:
     startStep = int(sys.argv[-1]) - 1
 except: pass
 
-#log = foamLog(fname)
 log = foamLog(fname)
-t,R,F,C = log.read(['pcorr']) # resid, forces, aero coeffs
+#t,R,F,C = log.read() # resid, forces, aero coeffs
+t,R,F,C = log.read(skipVars=['pcorr']) # resid, forces, aero coeffs
 
 nFigs = 0
 fname = '.'.join(fname.split('.')[:-1])
