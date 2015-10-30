@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/python
 import sys
 import shlex #for smart splitting to preserve enquoted text
 import matplotlib.pyplot as plt
@@ -15,12 +15,12 @@ def new():
     global curFig, curAxes
     curFig = plt.figure()
     curAxes = curFig.add_subplot(111)
-    plt.show(block=False)
+    plt.draw()
 
 def plot(fname, plotlist=[], legendnames=[], \
          xname='x', \
          title='', \
-         symbols='', \
+         style='-', \
          savefig='', \
          verbose=False):
     global curFig,curAxes
@@ -79,7 +79,7 @@ def plot(fname, plotlist=[], legendnames=[], \
         legendnames = [ varNames[var] for var in plotlist ]
 
     for var,lstr in zip(plotlist,legendnames):
-        curAxes.plot(data[0],data[var],symbols+'-',label=lstr)
+        curAxes.plot(data[0],data[var],style,label=lstr)
     curAxes.legend(loc='best')
     curAxes.set_xlabel(varNames[0])
     curAxes.set_title(title)
@@ -106,6 +106,16 @@ if __name__ == "__main__":
         print '    columns may be specified for plotting.'
         sys.exit()
 
-    plotlist = [int(var) for var in sys.argv[2:]]
-    plot( sys.argv[1], plotlist )
-    plt.show(block=True)
+    #plotlist = [int(var) for var in sys.argv[2:]]
+    plotlist = []
+    style = ''
+    for var in sys.argv[2:]:
+        try:
+            plotlist.append( int(var) )
+        except ValueError:
+            style += var
+    if style=='': style = '-'
+
+    plot( sys.argv[1], plotlist, style=style )
+    #plt.show(block=True)
+    plt.show()
