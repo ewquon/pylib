@@ -27,24 +27,6 @@ def find_peaks(data,x=[],Nsmoo=1):
     if TIMING: print ' - walltime [s] to calculate indices:',time.time()-t0
 
     if TIMING: t0 = time.time()
-    ysmoo = np.zeros((N))
-    #ysmoo2= np.zeros((N))
-
-# SLOW, and moving avg for last two indices are wrong (doesn't affect overall results)
-#    ysum = data[0]
-#    for i in range(N):
-#        #ysmoo[i] = np.mean( data[ist[i]:ind[i]] )
-#
-#        # faster:
-#        #ysmoo[i] = np.sum( data[ist[i]:ind[i]] ) / width[i]
-#
-#        # even faster:
-#        if ist[i] > 0: ysum -= data[ist[i]-1]
-#        if ind[i] < N: ysum += data[ind[i]-1]
-#        #ysmoo2[i] = ysum / width[i]
-#        ysmoo[i] = ysum / width[i]
-
-    #ysmoo2 = data.copy()
     ysmoo = data.copy()
     buff = np.zeros((N))
     for ismoo in range(1,Nsmoo+1):
@@ -52,22 +34,13 @@ def find_peaks(data,x=[],Nsmoo=1):
         buff[:ismoo] = 0.
         buff[ismoo:] = data[:N-ismoo]
         print -ismoo,buff
-        #ysmoo2 += buff
         ysmoo += buff
         # add RHS
         buff[:N-ismoo] = data[ismoo:]
         buff[N-ismoo:] = 0.
-        #ysmoo2 += buff
         ysmoo += buff
         print ismoo,buff
-    #ysmoo2 /= width
     ysmoo /= width
-
-    # DEBUG
-#    for i in range(N):
-#        print ist[i],ind[i],width[i],ysmoo[i],ysmoo2[i]
-#    print 'SHOULD BE ~ZERO:',np.max(ysmoo2-ysmoo)
-
     if TIMING: print ' - walltime [s] to smooth data:',time.time()-t0
 
     if TIMING: t0 = time.time()
