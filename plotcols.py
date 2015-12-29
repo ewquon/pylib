@@ -19,6 +19,7 @@ def new():
 
 def plot(fname, plotlist=[], legendnames=[], \
          xname='x', \
+         yname='', \
          title='', \
          style='-', \
          savefig='', \
@@ -82,6 +83,7 @@ def plot(fname, plotlist=[], legendnames=[], \
         curAxes.plot(data[0],data[var],style,label=lstr)
     curAxes.legend(loc='best')
     curAxes.set_xlabel(varNames[0])
+    curAxes.set_ylabel(yname)
     curAxes.set_title(title)
 
     if not savefig=='':
@@ -116,14 +118,18 @@ if __name__ == "__main__":
 
     #plotlist = [int(var) for var in sys.argv[2:]]
     plotlist = []
-    style = ''
+    varnames = []
+    #style = ''
     for var in sys.argv[2:]:
         try:
             plotlist.append( int(var) )
         except ValueError:
-            style += var
-    if style=='': style = '-'
+            #style += var
+            varnames.append(var)
+    #if style=='': style = '-'
+    if len(varnames) < len(plotlist): varnames = []
 
-    plot( sys.argv[1], plotlist, style=style, savefig=savename )
+    #plot( sys.argv[1], plotlist, style=style, savefig=savename )
+    plot( sys.argv[1], plotlist, legendnames=varnames, savefig=savename )
     #plt.show(block=True)
     if not savename: plt.show()
