@@ -2,7 +2,7 @@
 import numpy as np
 
 DEBUG       = False
-DUMP_PEAKS  = True
+DUMP_PEAKS  = False
 TIMING      = True
 
 if DEBUG: import matplotlib.pyplot as plt
@@ -33,22 +33,20 @@ def find_peaks(data,x=[],Nsmoo=1):
         # add LHS
         buff[:ismoo] = 0.
         buff[ismoo:] = data[:N-ismoo]
-        print -ismoo,buff
+        if DEBUG: print -ismoo,buff
         ysmoo += buff
         # add RHS
         buff[:N-ismoo] = data[ismoo:]
         buff[N-ismoo:] = 0.
         ysmoo += buff
-        print ismoo,buff
+        if DEBUG: print ismoo,buff
     ysmoo /= width
     if TIMING: print ' - walltime [s] to smooth data:',time.time()-t0
 
     if TIMING: t0 = time.time()
     twodx = dx[1:] + dx[:-1]
     dydx = np.zeros((N))
-    for i in range(1,N-1):
-        dydx[i] = ysmoo[i+1] - ysmoo[i-1]
-    dydx[1:-1] /= twodx
+    dydx[1:-1] = (ysmoo[2:] - ysmoo[:-2]) / twodx
     if TIMING: print ' - walltime [s] to calculate slope:',time.time()-t0
 
     if TIMING: t0 = time.time()
