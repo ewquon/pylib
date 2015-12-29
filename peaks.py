@@ -56,6 +56,26 @@ def find_peaks(data,x=[],Nsmoo=1):
             if np.abs(dydx[i]) < np.abs(dydx[i+1]):
                 indices.append(i)
             else: indices.append(i+1)
+
+    signchange = np.sign(dydx[1:]) + np.sign(dydx[:N-1])
+    indices2 = np.nonzero(signchange==0)[0]
+    idxshift = np.abs(dydx[indices2+1]) - np.abs(dydx[indices2]) # < 0 ==> dydx[i+1] closer to 0
+    idxshift = (idxshift < 0).astype(int)
+    #print np.array(indices)
+    #print idxshift
+    #print indices2+idxshift
+    indices2 += idxshift # correct peak locations
+    exact0s = np.nonzero( dydx==0 )[0]
+    print indices2.shape, exact0s.shape
+    indices2 = set(np.concatenate((indices2,exact0s)))
+    print 'num indices',len(indices),len(indices2)
+    print 'num set(indices)',len(set(indices)),len(set(indices2))
+    diff = set(indices).difference(indices2)
+    print 'diff',diff
+    assert(len(diff)==0)
+    for d in diff:
+        print d,dydx[d:d+2]
+
     if TIMING: print ' - walltime [s] to find peak indices:',time.time()-t0
 
     peaks = data[indices]
