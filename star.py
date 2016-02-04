@@ -72,31 +72,37 @@ class csvfile:
     def _remove_dup(self):
         if verbose: print '- checking for duplicates'
         dx = np.diff(self.x)
-        if any(np.abs(dx)<1e-6):
-            print 'Warning: duplicate x found in',self.fname
+        check = np.abs(dx) < 1e-6
+        if any(check):
+            print 'Warning:',np.count_nonzero(check),'duplicate(s) found in',self.fname
             N = self.N
+            x = self.x
+            y = self.y
             newx = np.zeros((N))
-            newy = np.zeros((N))
+            newy = np.zeros((N,self.Noutputs))
             norm = np.ones((N))
             newN = N
             inew = 0
             newx[0] = x[0]
-            newy[0] = y[0]
+            newy[0,:] = y[0,:]
             for i in range(1,N):
-                if x[i] - x[inew] < 1e-6: #duplicate x
-                    print 'DUPLICATE x ({:f},{:f}) == ({:f},{:f})'.format(x[inew],y[inew],x[i],y[i])
+                if x[i] - newx[inew] < 1e-6: #duplicate x
+                    print 'DUPLICATE x ({:f},{:f}) == ({:f},{:f})'.format(x[inew],y[inew,0],x[i],y[i,0])
                     newN -= 1
-                    newy[inew] += newy[i]
+                    newy[inew,:] += y[i,:]
                     norm[inew] += 1
                 else:
                     inew += 1
                     newx[inew] = x[i]
-                    newy[inew] = y[i]
-            print '  number of duplicated points :',np.count_nonzero(norm>1)
-            print '  maximum number overlapping  :',np.max(norm)
-            x = newx[:newN]
-            y = newy[:newN] / norm[:newN]
-            print '  old length',N,'new length',newN,len(x)
+                    newy[inew,:] = y[i,:]
+            if verbose:
+                print '  number of duplicated points :',np.count_nonzero(norm>1)
+                print '  maximum number overlapping  :',np.max(norm)
+            self.x = newx[:newN]
+            for j in range(self.Noutputs):
+                newy[:newN,j] /= norm[:newN]
+            self.y = newy[:newN,:]
+            #for xi,yi in zip(self.x,self.y[:,0]): print xi,yi #DEBUG
 
 #-------------------------------------------------------------------------------
 class series:
@@ -167,21 +173,21 @@ class series:
         '''
         print 'Extracting',self.data[0].varnames[yvar],'at x=',xval,'using',method,'method'
         sample = np.zeros((self.N))
-        Nexact = 0
+        #Nexact = 0
         for i in range(self.N):
 
             if method=='nearest':
                 delta = np.abs( xval - self.data[i].x )
                 imin = np.argmin(delta)
                 sample[i] = self.data[i].y[imin,yvar]
-                if delta[imin]==0: Nexact += 1
+                #if delta[imin]==0: Nexact += 1
 
             elif method=='linear': #assume data is sorted
                 delta = xval - self.data[i].x
                 if np.any(delta==0):
                     ival = np.nonzero(delta==0)[0][0]
                     sample[i] = self.data[i].y[ival,yvar]
-                    Nexact += 1
+                    #Nexact += 1
                 else:
                     sgnchange = np.sign(delta[:-1])*np.sign(delta[1:])
                     idx = np.nonzero(delta<0)[0][0]
@@ -195,11 +201,11 @@ class series:
                 print 'Unrecognized method'
                 break
 
-        print ' ',Nexact,'/',self.N,'exact matches'
+        #print ' ',Nexact,'/',self.N,'exact matches'
 
         if plot:
             #plt.figure()
-            plt.plot(self.times,sample,label='x='+str(xval))
+            plt.plot(self.times,sample,linewidth=2,label='x='+str(xval))
             plt.xlabel('time (s)')
             plt.ylabel(self.data[0].varnames[yvar])
             plt.suptitle('sampled at x='+str(xval)+' m')
