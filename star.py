@@ -87,7 +87,7 @@ class csvfile:
             newy[0,:] = y[0,:]
             for i in range(1,N):
                 if x[i] - newx[inew] < 1e-6: #duplicate x
-                    print 'DUPLICATE x ({:f},{:f}) == ({:f},{:f})'.format(x[inew],y[inew,0],x[i],y[i,0])
+                    if verbose: print 'DUPLICATE x ({:f},{:f}) == ({:f},{:f})'.format(x[inew],y[inew,0],x[i],y[i,0])
                     newN -= 1
                     newy[inew,:] += y[i,:]
                     norm[inew] += 1
@@ -163,6 +163,7 @@ class series:
     def process_all(self,**kwargs):
         '''Process all files in search directory; keyword arguments are passed to the csv reader for each file
         '''
+        print 'Processing all files in',self.searchDir
         for i,fname in enumerate(self.filelist):
             self.data[i] = csvfile(fname,**kwargs)
             if verbose: print 'Processed',self.data[i]
@@ -208,7 +209,8 @@ class series:
             plt.plot(self.times,sample,linewidth=2,label='x='+str(xval))
             plt.xlabel('time (s)')
             plt.ylabel(self.data[0].varnames[yvar])
-            plt.suptitle('sampled at x='+str(xval)+' m')
+            if method=='nearest': plt.suptitle('sampled near x='+str(xval)+' m')
+            else: plt.suptitle('sampled at x='+str(xval)+' m')
             #plt.show()
 
         return self.times, sample

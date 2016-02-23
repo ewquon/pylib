@@ -291,7 +291,8 @@ class focused_wave:
         self.dw = w[1] - w[0] #dw = np.diff(w)
         self.S  = np.array(S)
         self.A  = np.array(S)**0.5
-        self.p  = np.array(p)
+        #self.p  = np.array(p)
+        self.p  = -np.array(p) # updated 2/10/16 after coeff output was changed
         self.k  = np.array(k)
 
         self.z_ref  = np.zeros((self.Ntimes))
