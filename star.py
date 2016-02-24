@@ -33,6 +33,7 @@ class csvfile:
                 output += '\n  '+varname
         else:
             output = '{:s} : {:d} data points'.format(self.fname,self.N)
+        output += '\n'
         return output
 
     def _read(self):
@@ -128,12 +129,24 @@ class series:
         flist = glob.glob(self.searchDir+os.sep+self.searchStr)
         self.N = len(flist)
         self.times = np.zeros((self.N))
+        self.indices = np.zeros((self.N),dtype=int)
         for i,csvfile in enumerate(flist):
-            t = float( csvfile[:-4].split('_')[-1] ) * self.dt
+            idx = csvfile[:-4].split('_')[-1]
+            t = float( idx ) * self.dt
+            self.indices[i] = idx
             self.times[i] = t
         reorder = [ i[0] for i in sorted(enumerate(self.times), key=lambda x:x[1]) ]
-        self.times = self.times[reorder]
-        self.filelist = [ flist[i] for i in reorder ]
+        self.indices = self.indices[reorder]
+        idx_delta = self.indices[1] - self.indices[0]
+        gaps = np.nonzero( np.diff(self.indices) > idx_delta )[0]
+        if len(gaps) > 0:
+            imax = gaps[0]+1
+            print 'Note:',len(gaps),'gaps in output history found; truncating series at t >=',self.times[reorder[imax]]
+            print '      N reduced from',self.N,'to',imax
+            self.N = imax
+        else: imax = None
+        self.times = self.times[reorder[:imax]]
+        self.filelist = [ flist[i] for i in reorder[:imax] ]
         self.latest = self.filelist[-1]
 
     def __repr__(self):
@@ -144,6 +157,7 @@ class series:
         if verbose:
             for i,t in enumerate(self.times):
                 output += '\n  t={:f} : {:s}'.format(t,self.filelist[i])
+        output += '\n'
         return output
 
     def __iter__(self):
@@ -214,4 +228,78 @@ class series:
             #plt.show()
 
         return self.times, sample
+
+#-------------------------------------------------------------------------------
+class spectrum:
+    '''Data structure to store spectral components
+    '''
+
+    def __init__(self,coefficients):
+        self.fname = coefficients
+        self.N = -1     # number of wave components
+        self.S = None   # spectral amplitude, m^2/(rad/s)
+        self.w = None   # frequency, rad/s
+        self.dw = -1    # frequency separation of each component, rad/s
+        self.k = None   # wavenumber, 1/m
+        self.p = None   # phases, rad
+        self.A = None   # component amplitude, m
+        self.T = None   # component period, s
+        self.L = None   # component wavelength, m
+        self.header = dict()
+
+        self._read()
+
+    def _read(self,verbose=False):
+        print 'Reading spectral coefficients from',self.fname
+        #--first pass
+        try:
+            with open(self.fname,'r') as f:
+                if self.N < 0:
+                    Nhdr = 0
+                    for i,line in enumerate(f):
+                        if line.startswith('#'): Nhdr += 1
+                    self.N = i+1-Nhdr
+        except IOError:
+            print 'problem opening file!'
+            return
+        self.w = np.zeros((self.N))
+        self.S = np.zeros((self.N))
+        self.p = np.zeros((self.N))
+        self.k = np.zeros((self.N))
+        #--second pass
+        iwave = 0
+        with open(self.fname,'r') as f:
+            for line in f:
+                if line.strip()=='': break # stop on blank line
+                if line.startswith('#'): 
+                    if verbose: sys.stdout.write(line)
+                    # parse additional parameters...
+                    line = line.split()
+                    try:
+                        if not line[1][-1] == ':': continue
+                        param = line[1][:-1]
+                        self.header[param] = float(line[2])
+                    except IndexError: pass
+                    continue
+                # z(x,t) = dw * np.sum( A*np.cos( k*x - w*(t-toffset) - phi ) )
+                w, S, phi, k = [ float(val) for val in line.split() ]
+                self.w[iwave] = w   
+                self.S[iwave] = S
+                self.p[iwave] = phi   
+                self.k[iwave] = k
+                iwave += 1
+        self.T = 2.0*np.pi/w
+        self.L = 2.0*np.pi/k
+        self.A = self.S**0.5
+
+    def __repr__(self):
+        '''Custom output
+        '''
+        output = 'Spectrum containing {:d} wave components\n'.format(self.N)
+        output+= 'Read from file: {:s}\n'.format(self.fname)
+        output+= 'Header data:\n'
+        for param in self.header.keys():
+            output+= '  {:s}: {:f}\n'.format(param,self.header[param])
+        return output
+
 
