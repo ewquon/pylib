@@ -110,7 +110,7 @@ class series:
     '''Data structure to find and store information about a data series
     '''
 
-    def __init__(self,searchDir='.',searchStr='*.csv',dt=1.0):
+    def __init__(self,searchDir='.',searchStr='*.csv',dt=1.0,histGapAction=''):
         self.index      = 0
         self.searchDir  = searchDir
         self.searchStr  = searchStr
@@ -120,6 +120,8 @@ class series:
         self.filelist   = []
         self.latest     = ''
         self.data       = dict()
+
+        self.histGapAction = histGapAction
 
         self._find_files()
 
@@ -136,15 +138,22 @@ class series:
             self.indices[i] = idx
             self.times[i] = t
         reorder = [ i[0] for i in sorted(enumerate(self.times), key=lambda x:x[1]) ]
+
+        # checking for gaps in data
+        # assuming the sampling interval is a constant
         self.indices = self.indices[reorder]
         idx_delta = self.indices[1] - self.indices[0]
         gaps = np.nonzero( np.diff(self.indices) > idx_delta )[0]
+        imax = None
         if len(gaps) > 0:
-            imax = gaps[0]+1
-            print 'Note:',len(gaps),'gaps in output history found; truncating series at t >=',self.times[reorder[imax]]
-            print '      N reduced from',self.N,'to',imax
-            self.N = imax
-        else: imax = None
+            print 'Note:',len(gaps),'gaps in output history found'
+            # handle cases with missing data
+            if self.histGapAction=='truncate':
+                imax = gaps[0]+1
+                print '      truncating series at t >= {:f} (N reduced from {:d} to {:d})'.format(
+                        self.times[reorder[imax]], self.N, imax )
+                self.N = imax
+
         self.times = self.times[reorder[:imax]]
         self.filelist = [ flist[i] for i in reorder[:imax] ]
         self.latest = self.filelist[-1]
