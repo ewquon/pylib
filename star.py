@@ -255,7 +255,7 @@ class series:
 
         if plot:
             #plt.figure()
-            plt.plot(self.times,sample,linewidth=2,label='x='+str(xval))
+            plt.plot(self.times,sample,linewidth=2,label='x={:.1f}'.format(xval))
             plt.xlabel('time (s)')
             plt.ylabel(self.data[0].varnames[yvar])
             if method=='nearest': plt.suptitle('sampled near x='+str(xval)+' m')
