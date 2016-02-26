@@ -217,7 +217,7 @@ class series:
         pickle.dump( self.data, open('waterSurface_data.pkl','w') )
 
 
-    def sample(self,xval=0.0,yvar=0,method='linear',plot=False):
+    def sample(self,xval=0.0,yvar=0,method='linear',plot=None):
         '''Sample a variable at a location over time, assuming all files have the same number of variables and the data contained within is sorted.
         Returns time and data arrays
         '''
@@ -254,13 +254,14 @@ class series:
         #print ' ',Nexact,'/',self.N,'exact matches'
 
         if plot:
-            #plt.figure()
-            plt.plot(self.times,sample,linewidth=2,label='x={:.1f}'.format(xval))
-            plt.xlabel('time (s)')
-            plt.ylabel(self.data[0].varnames[yvar])
-            if method=='nearest': plt.suptitle('sampled near x='+str(xval)+' m')
-            else: plt.suptitle('sampled at x='+str(xval)+' m')
-            #plt.show()
+            if plot==True: plot = plt.gca()
+            if method=='nearest': labelstr = 'sampled near x={:.1f}'.format(xval)
+            else: labelstr = 'sampled at x={:.1f}'.format(xval)
+            plot.plot(self.times,sample,linewidth=2,label=labelstr)
+            plot.set_xlabel('time (s)')
+            plot.set_ylabel(self.data[0].varnames[yvar])
+            #if method=='nearest': plot.set_title('sampled near x='+str(xval)+' m')
+            #else: plot.set_title('sampled at x='+str(xval)+' m')
 
         return self.times, sample
 
