@@ -5,6 +5,7 @@ import glob
 import shlex #for smart splitting to preserve enquoted text
 import numpy as np
 import matplotlib.pyplot as plt
+import pickle #for storing previous processed data
 
 verbose = False
 
@@ -186,10 +187,35 @@ class series:
     def process_all(self,**kwargs):
         '''Process all files in search directory; keyword arguments are passed to the csv reader for each file
         '''
+        try:
+            existing_filelist = pickle.load( open('waterSurface_filelist.pkl','r') )
+            print 'Found previous file list'
+            filesAreTheSame = True
+            if len(existing_filelist) == len(self.filelist):
+                for f1,f2 in zip(existing_filelist, self.filelist):
+                    if not f1==f2:
+                        filesAreTheSame = False
+                        break
+                if filesAreTheSame: 
+                    print 'Files have not changed, loading pickled data'
+                    try: 
+                        self.data = pickle.load( open('waterSurface_data.pkl','r') )
+                        return
+                    except (IOError,EOFError):
+                        print 'Problem loading waterSurface_data.pkl'
+                else:
+                    print 'File list has changed'
+        except (IOError,EOFError): pass
+
+        pickle.dump( self.filelist, open('waterSurface_filelist.pkl','w') )
+
         print 'Processing all files in',self.searchDir
         for i,fname in enumerate(self.filelist):
             self.data[i] = csvfile(fname,**kwargs)
             if verbose: print 'Processed',self.data[i]
+
+        pickle.dump( self.data, open('waterSurface_data.pkl','w') )
+
 
     def sample(self,xval=0.0,yvar=0,method='linear',plot=False):
         '''Sample a variable at a location over time, assuming all files have the same number of variables and the data contained within is sorted.
