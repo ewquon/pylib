@@ -217,7 +217,7 @@ class series:
         pickle.dump( self.data, open('waterSurface_data.pkl','w') )
 
 
-    def sample(self,xval=0.0,yvar=0,method='linear',plot=None):
+    def sample(self,xval=0.0,yvar=0,method='linear',plot=None,output=None):
         '''Sample a variable at a location over time, assuming all files have the same number of variables and the data contained within is sorted.
         Returns time and data arrays
         '''
@@ -262,6 +262,13 @@ class series:
             plot.set_ylabel(self.data[0].varnames[yvar])
             #if method=='nearest': plot.set_title('sampled near x='+str(xval)+' m')
             #else: plot.set_title('sampled at x='+str(xval)+' m')
+
+        if output:
+            with open(output,'w') as f:
+                f.write('{:d}\n'.format(len(self.times)))
+                for ti,zi in zip(self.times,sample):
+                    f.write(' {:g} {:g}\n'.format(ti,zi))
+            print 'Wrote',output
 
         return self.times, sample
 
