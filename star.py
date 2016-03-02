@@ -321,7 +321,11 @@ class spectrum:
                     try:
                         if not line[1][-1] == ':': continue
                         param = line[1][:-1]
-                        self.header[param] = float(line[2])
+                        print param
+                        try:
+                            self.header[param] = float(line[2])
+                        except ValueError:
+                            self.header[param] = line[2]
                     except IndexError: pass
                     continue
                 # z(x,t) = dw * np.sum( A*np.cos( k*x - w*(t-toffset) - phi ) )
