@@ -17,6 +17,8 @@ def find_peaks(data,x=[],Nsmoo=1):
     A smoothing parameter selects the number of points to the left
     and right to take in a moving average (default=1), prior to
     slope calculation. 
+
+    Returns peak values and indices.
     """
 
     # process inputs

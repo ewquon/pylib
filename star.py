@@ -321,7 +321,6 @@ class spectrum:
                     try:
                         if not line[1][-1] == ':': continue
                         param = line[1][:-1]
-                        print param
                         try:
                             self.header[param] = float(line[2])
                         except ValueError:

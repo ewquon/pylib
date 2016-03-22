@@ -7,6 +7,7 @@ sys.path.append('/Users/equon/WEC/fifthOrderWave')
 import fenton1985
 
 g = 9.81
+default_depth = 70.0 # m
 theories = ['linear','fenton1985']
 
 # Numerical parameters
@@ -14,7 +15,7 @@ DEBUG = False
 MAXITER = 25
 TOL = 1e-14
 
-def solve_k(w,d=70.0,guess=None,H=-1,theory='linear'):
+def solve_k(w,d=default_depth,guess=None,H=-1,theory='linear'):
     """ Solve for the wavenumber (k) satisfying the linear dispersion relation at a given depth (d) and frequency (w).
     An optional guess may be provided, otherwise the initial k value will be estimated from the deep-water limit.
     """
@@ -55,7 +56,7 @@ def solve_k(w,d=70.0,guess=None,H=-1,theory='linear'):
 
     return ki
 
-def solve_fifthorder_k(w,H,d=70.0,guess=None):
+def solve_fifthorder_k(w,H,d=default_depth,guess=None):
     #solve_k(w,d,guess,H=H,theory='fenton1985')
     from scipy.optimize import fsolve
     def eqn23(k): # TODO: handle mean current speed not 0
@@ -67,6 +68,25 @@ def solve_fifthorder_k(w,H,d=70.0,guess=None):
 
     return k
 
+def fifthorder_elevation(x,H,d=default_depth,k=None,w=None,T=None):
+    # calculate wavenumber if not provided
+    if not k:
+        if not w: 
+            if not T:
+                print 'need to specify k, w, or T'
+                return None
+            w = 2*np.pi/T
+        k = solve_fifthorder_k(w,H,d=default_depth)
+
+    B22,B31,B42,B44,B53,B55 = fenton1985.evalB(k*d)
+    e = k*H/2 #dimensionless wave height
+    kz =   e*np.cos(k*x) \
+         + e**2*B22*np.cos(2*k*x) \
+         + e**3*B31*(np.cos(k*x) - np.cos(3*k*x)) \
+         + e**4*(B42*np.cos(2*k*x) + B44*np.cos(4*k*x)) \
+         + e**5*(-(B53+B55)*np.cos(k*x) + B53*np.cos(3*k*x) + B55*np.cos(5*k*x))
+
+    return kz/k
 
 #---------------------------------------------------------------------------------------------------
 # 
@@ -80,7 +100,7 @@ def _linear_dispersion_newton_step(w,k,d):
 
 def _fenton1985_dispersion_step(w,k,H,d):
     """ Solve eqn 23 in Fenton1985, assuming no mean current (i.e., c_E = 0) using Newton's method.
-    This approach was found to be numerically unstable unless a relaxation factor was applied at each iteration; however this required > 100 iterations for convergence in the cases tested. 
+    NOTE: This approach was found to be numerically unstable unless a relaxation factor was applied at each iteration; however this required > 100 iterations for convergence in the cases tested. 
     """
     kd = k*d
     S = 1./np.cosh(2*kd)
