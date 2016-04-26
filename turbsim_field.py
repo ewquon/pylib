@@ -1,4 +1,8 @@
 #!/usr/local/bin/python
+#
+# TurbSim data processing module
+# written by Eliot Quon (eliot.quon@nrel.gov)
+#
 import numpy as np
 import VTKwriter
 

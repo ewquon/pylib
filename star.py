@@ -1,4 +1,8 @@
 #!/usr/bin/python
+#
+# Star-CCM+ data processing module
+# written by Eliot Quon (eliot.quon@nrel.gov)
+#
 import sys
 import os
 import glob

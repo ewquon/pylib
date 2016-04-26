@@ -1,4 +1,8 @@
 #!/usr/bin/python
+#
+# Wave theories module
+# written by Eliot Quon (eliot.quon@nrel.gov)
+#
 import sys
 import numpy as np
 

@@ -1,4 +1,8 @@
 #!/usr/local/bin/python
+#
+# Peak finding module
+# written by Eliot Quon (eliot.quon@nrel.gov)
+#
 import numpy as np
 
 DEBUG       = False
