@@ -120,9 +120,11 @@ class turbsim_field:
             origin=[0.,self.y[0],self.z[0]] )
 
 
-    def writeVTKSeries(self,prefix=None):
-        if not prefix: prefix = 'vtk/' + self.prefix
-        for i in range(self.N):
+    def writeVTKSeries(self,prefix=None,step=1):
+        """ Call writeVTK for a range of times
+        """
+        if not prefix: prefix = self.prefix
+        for i in range(0,self.N,step):
             fname = prefix + '_' + str(i) + '.vtk'
             self.writeVTK(fname,itime=i)
 
