@@ -115,10 +115,11 @@ class series:
     '''Data structure to find and store information about a data series
     '''
 
-    def __init__(self,searchDir='.',searchStr='*.csv',dt=1.0,histGapAction=''):
+    def __init__(self,searchDir='.',searchStr='*.csv',dt=1.0,histGapAction='',pickleDir='.'):
         self.index      = 0
         self.searchDir  = searchDir
         self.searchStr  = searchStr
+        self.pickleDir  = pickleDir
         self.dt         = dt
         self.N          = -1
         self.times      = []
@@ -192,7 +193,7 @@ class series:
         '''Process all files in search directory; keyword arguments are passed to the csv reader for each file
         '''
         try:
-            existing_filelist = pickle.load( open('waterSurface_filelist.pkl','r') )
+            existing_filelist = pickle.load( open(self.pickleDir+os.sep+'waterSurface_filelist.pkl','r') )
             print 'Found previous file list'
             filesAreTheSame = True
             if len(existing_filelist) == len(self.filelist):
@@ -203,7 +204,7 @@ class series:
                 if filesAreTheSame: 
                     print 'Files have not changed, loading pickled data'
                     try: 
-                        self.data = pickle.load( open('waterSurface_data.pkl','r') )
+                        self.data = pickle.load( open(self.pickleDir+os.sep+'waterSurface_data.pkl','r') )
                         return
                     except (IOError,EOFError):
                         print 'Problem loading waterSurface_data.pkl'
@@ -211,14 +212,14 @@ class series:
                     print 'File list has changed'
         except (IOError,EOFError): pass
 
-        pickle.dump( self.filelist, open('waterSurface_filelist.pkl','w') )
+        pickle.dump( self.filelist, open(self.pickleDir+os.sep+'waterSurface_filelist.pkl','w') )
 
         print 'Processing all files in',self.searchDir
         for i,fname in enumerate(self.filelist):
             self.data[i] = csvfile(fname,**kwargs)
             if verbose: print 'Processed',self.data[i]
 
-        pickle.dump( self.data, open('waterSurface_data.pkl','w') )
+        pickle.dump( self.data, open(self.pickleDir+os.sep+'waterSurface_data.pkl','w') )
 
 
     def sample(self,xval=0.0,yvar=0,method='linear',plot=None,output=None):
