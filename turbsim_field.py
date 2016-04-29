@@ -1,6 +1,6 @@
 #!/usr/local/bin/python
 #
-# TurbSim data processing module
+# TurbSim data processing module (ASCII full-field time series)
 # written by Eliot Quon (eliot.quon@nrel.gov)
 #
 import numpy as np
