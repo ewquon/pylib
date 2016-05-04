@@ -3,6 +3,7 @@
 # TurbSim data processing module (binary AeroDyn format)
 # written by Eliot Quon (eliot.quon@nrel.gov)
 #
+import sys
 import numpy as np
 import VTKwriter
 from binario import *
@@ -84,27 +85,31 @@ class turbsim_bts:
             if verbose: print 'Reading normalized grid data'
             self.V = np.zeros((3,self.NY,self.NZ,self.N),order='F',dtype=self.realtype)
             for val in np.nditer(self.V, op_flags=['writeonly']):
-                val = f.read_int2()
+                val[...] = f.read_int2()
 
             if self.Ntower > 0:
                 self.Vtow = np.zeros((3,self.Ntower,self.N),order='F',dtype=self.realtype)
                 if verbose: print 'Reading normalized tower data'
                 for val in np.nditer(self.Vtow, op_flags=['writeonly']):
-                    val = f.read_int2()
+                    val[...] = f.read_int2()
                             
             #
             # calculate dimensional velocity
             #
             if verbose: print 'Calculating velocities'
+            print '  u min/max [',np.min(self.V[0,:,:,:]),np.max(self.V[0,:,:,:]),']'
+            print '  v min/max [',np.min(self.V[1,:,:,:]),np.max(self.V[1,:,:,:]),']'
+            print '  w min/max [',np.min(self.V[2,:,:,:]),np.max(self.V[2,:,:,:]),']'
             for i in range(3):
                 self.V[i,:,:,:] -= self.Vintercept[i]
                 self.V[i,:,:,:] /= self.Vslope[i]
                 if self.Ntower > 0:
                     self.Vtow[i,:,:] -= self.Vintercept[i]
                     self.Vtow[i,:,:] /= self.Vslope[i]
-            print '  u [',np.min(self.V[0,:,:,:]),np.max(self.V[0,:,:,:]),']'
-            print '  v [',np.min(self.V[1,:,:,:]),np.max(self.V[1,:,:,:]),']'
-            print '  w [',np.min(self.V[2,:,:,:]),np.max(self.V[2,:,:,:]),']'
+
+            print '  u min/max [',np.min(self.V[0,:,:,:]),np.max(self.V[0,:,:,:]),']'
+            print '  v min/max [',np.min(self.V[1,:,:,:]),np.max(self.V[1,:,:,:]),']'
+            print '  w min/max [',np.min(self.V[2,:,:,:]),np.max(self.V[2,:,:,:]),']'
 
             #
             # calculate coordinates
@@ -117,7 +122,7 @@ class turbsim_bts:
             self.t = np.arange(self.N,dtype=self.realtype)*self.dt
             if verbose: print 'Read times',self.t
 
-    def writeVTK(self,fname,itime=None,output_time=None):
+    def writeVTK(self,fname,itime=None,output_time=None,stdout='verbose'):
         """ Write out binary VTK file with a single vector field.
         Can specify time index or output time.
         Note: VTKwriter expects velocity arrays of form u[NY,NX,NZ]
@@ -127,7 +132,10 @@ class turbsim_bts:
         if not itime:
             print 'Need to specify itime or output_time'
             return
-        print 'Writing out time step',itime,': t=',self.t[itime]
+	if stdout=='overwrite':
+            sys.stdout.write('\rWriting time step {:d} :  t= {:f}'.format(itime,self.t[itime]))
+	else: #if stdout=='verbose':
+            print 'Writing out time step',itime,': t=',self.t[itime]
         u = np.zeros((1,self.NY,self.NZ)); u[0,:,:] = self.V[0,:,:,itime]
         v = np.zeros((1,self.NY,self.NZ)); v[0,:,:] = self.V[1,:,:,itime]
         w = np.zeros((1,self.NY,self.NZ)); w[0,:,:] = self.V[2,:,:,itime]
@@ -141,13 +149,14 @@ class turbsim_bts:
             indexorder='ijk')
 
 
-    def writeVTKSeries(self,prefix=None,step=1):
+    def writeVTKSeries(self,prefix=None,step=1,stdout='verbose'):
         """ Call writeVTK for a range of times
         """
         if not prefix: prefix = self.prefix
         for i in range(0,self.N,step):
             fname = prefix + '_' + str(i) + '.vtk'
-            self.writeVTK(fname,itime=i)
+            self.writeVTK(fname,itime=i,stdout=stdout)
+	if stdout=='overwrite': sys.stdout.write('\n')
 
 #===============================================================================
 #===============================================================================
@@ -156,4 +165,6 @@ class turbsim_bts:
 if __name__=='__main__':
     prefix = 'Kaimal_15'
     field = turbsim_bts(prefix,verbose=True)
-    field.writeVTKSeries(prefix='vtk/Kaimal_15') #,step=10)
+    #field.writeVTKSeries(prefix='vtk/Kaimal_15') #,step=10)
+    field.writeVTKSeries(prefix='vtk/Kaimal_15' ,step=10, stdout='overwrite')
+
