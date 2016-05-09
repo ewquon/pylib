@@ -7,6 +7,7 @@ import sys
 import numpy as np
 import VTKwriter
 from binario import *
+import time
 
 class turbsim_bts:
     realtype = np.float32
@@ -83,6 +84,7 @@ class turbsim_bts:
             #            for i in range(3):
             # need to specify Fortran-order to properly read data using np.nditer
             if verbose: print 'Reading normalized grid data'
+            t0 = time.clock()
             self.V = np.zeros((3,self.NY,self.NZ,self.N),order='F',dtype=self.realtype)
             for val in np.nditer(self.V, op_flags=['writeonly']):
                 val[...] = f.read_int2()
@@ -92,6 +94,7 @@ class turbsim_bts:
                 if verbose: print 'Reading normalized tower data'
                 for val in np.nditer(self.Vtow, op_flags=['writeonly']):
                     val[...] = f.read_int2()
+            if verbose: 'Velocitiy fields read in',time.clock(),'s'
                             
             #
             # calculate dimensional velocity
