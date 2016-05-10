@@ -15,7 +15,7 @@ import time
 class turbsim_bts:
     realtype = np.float32
 
-    def __init__(self,prefix,verbose=False,Umean=-1):
+    def __init__(self,prefix,Umean=None,verbose=False):
         """ Handle bts files containing binary full-field time series output from TurbSim.
         Tested with TurbSim v2.00.05c-bjj, 25-Feb-2016
         """
@@ -54,21 +54,27 @@ class turbsim_bts:
             self.dz = f.read_float(dtype=self.realtype)
             self.dy = f.read_float(dtype=self.realtype)
             self.dt = f.read_float(dtype=self.realtype)
+            self.T  = self.realtype(self.N * self.dt)
             self.Nsize = 3*self.NY*self.NZ*self.N
             if verbose:
                 print '  nt=',self.N
-                print '  (problem size: {:d})'.format(self.Nsize)
+                print '  (problem size: {:d} points)'.format(self.Nsize)
                 print '  dz,dy=',self.dz,self.dy
                 print '  TimeStep=',self.dt
+                print '  Period=',self.T
 
             # - read reference values
             self.uhub = f.read_float(dtype=self.realtype)
             self.zhub = f.read_float(dtype=self.realtype) # NOT USED
             self.zbot = f.read_float(dtype=self.realtype)
-            if self.Umean < 0: self.Umean = self.uhub
+            if self.Umean is None:
+                self.Umean = self.uhub
+                if verbose: print '  Umean = uhub =',self.Umean,'(for calculating fluctuations)'
+            else: # user-specified Umean
+                if verbose:
+                    print '  Umean =',self.Umean,'(for calculating fluctuations)'
+                    print '  uhub=',self.uhub,' (NOT USED)'
             if verbose:
-                print '  Umean =',self.Umean,'(for calculating fluctuations)'
-                print '  uhub=',self.uhub#,' (NOT USED)'
                 print '  HubHt=',self.zhub,' (NOT USED)'
                 print '  Zbottom=',self.zbot
 
@@ -121,6 +127,7 @@ class turbsim_bts:
                 if self.Ntower > 0:
                     self.Vtow[i,:,:] -= self.Vintercept[i]
                     self.Vtow[i,:,:] /= self.Vslope[i]
+            self.V[0,:,:,:] -= self.Umean
 
             #print '  V size :',self.V.nbytes/1042.**2,'MB'
             print '  u min/max [',np.min(self.V[0,:,:,:]),np.max(self.V[0,:,:,:]),']'
@@ -151,7 +158,9 @@ class turbsim_bts:
         ntiles = int(ntiles)
         print 'Creating',ntiles,'horizontal tiles'
         print '  before:',self.V.shape
-        self.V = np.tile(self.V,(1,ntiles,1,1))
+        #self.V = np.tile(self.V,(1,ntiles,1,1))
+        self.V = np.tile(self.V[:,:-1,:,:],(1,ntiles,1,1))
+        self.V = np.concatenate((self.V,self.V[:,0,:,:]),axis=1)
         print '  after :',self.V.shape
 
         if mirror:
@@ -165,7 +174,78 @@ class turbsim_bts:
         self.NY *= ntiles
         assert( self.V.shape == (3,self.NY,self.NZ,self.N) )
 
-    def writeVTK(self,fname,itime=None,output_time=None,stdout='verbose'):
+    def writeMappedBC(self,outputdir,interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):
+        """ For use with OpenFOAM's timeVaryingMappedFixedValue boundary condition.
+        This will create a points file and time directories in 'outputdir', which should be placed in constant/boundaryData/<patchname>.
+        """
+        import os
+        if not os.path.isdir(outputdir):
+            print 'Creating output dir :',outputdir
+            os.mkdir(outputdir)
+
+        # write points file
+        pointshdr = """/*--------------------------------*- C++ -*----------------------------------*\\
+| =========                 |                                                 |
+| \\\\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\\\    /   O peration     | Version:  2.4.x                                 |
+|   \\\\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\\\/     M anipulation  |                                                 |
+\\*---------------------------------------------------------------------------*/
+FoamFile
+{{
+    version     2.0;
+    format      ascii;
+    class       vectorField;
+    location    "constant/boundaryData/{patchName}";
+    object      points;
+}}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n\n"""
+        fname = outputdir + os.sep + 'points'
+        print 'Writing',fname
+        with open(fname,'w') as f:
+            f.write(pointshdr.format(patchName=bcname))
+            f.write('{:d}\n(\n'.format(self.NY*self.NZ))
+            for j in range(self.NZ):
+                for i in range(self.NY):
+                    f.write('({:f} {:f} {:f})\n'.format(xinlet,self.y[i],self.z[j]))
+            f.write(')\n')
+
+        # write time dirs
+        datahdr = """/*--------------------------------*- C++ -*----------------------------------*\\
+| =========                 |                                                 |
+| \\\\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\\\    /   O peration     | Version:  2.4.x                                 |
+|   \\\\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\\\/     M anipulation  |                                                 |
+\\*---------------------------------------------------------------------------*/
+FoamFile
+{{
+    version     2.0;
+    format      ascii;
+    class       vectorField;
+    location    "constant/boundaryData/{patchName}/{timeName}";
+    object      values;
+}}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n\n"""
+        if Tmax is None: Tmax = self.T
+        Nsteps = int(Tmax / self.dt)
+        for i in range(0,Nsteps,interval):
+            itime = np.mod(i,self.N)
+            tname = '{:f}'.format(self.realtype(i*self.dt)).rstrip('0').rstrip('.')
+            try: os.mkdir(outputdir+os.sep+tname)
+            except: pass
+            fname = outputdir + os.sep + tname + os.sep + 'U'
+            sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
+            with open(fname,'w') as f:
+                f.write(datahdr.format(patchName=bcname,timeName=tname))
+                f.write('{:d}\n(\n'.format(self.NY*self.NZ))
+                for j in range(self.NZ):
+                    for i in range(self.NY):
+                        f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]))
+                f.write(')\n')
+
+
+    def writeVTK(self,fname,itime=None,output_time=None,stdout='verbose'):# {{{
         """ Write out binary VTK file with a single vector field.
         Can specify time index or output time.
         """
@@ -178,7 +258,7 @@ class turbsim_bts:
             sys.stdout.write('\rWriting time step {:d} :  t= {:f}'.format(itime,self.t[itime]))
 	else: #if stdout=='verbose':
             print 'Writing out time step',itime,': t=',self.t[itime]
-        u = np.zeros((1,self.NY,self.NZ)); u[0,:,:] = self.V[0,:,:,itime] - self.Umean
+        u = np.zeros((1,self.NY,self.NZ)); u[0,:,:] = self.V[0,:,:,itime]
         v = np.zeros((1,self.NY,self.NZ)); v[0,:,:] = self.V[1,:,:,itime]
         w = np.zeros((1,self.NY,self.NZ)); w[0,:,:] = self.V[2,:,:,itime]
         VTKwriter.vtk_write_structured_points( open(fname,'wb'), #binary mode
@@ -188,17 +268,16 @@ class turbsim_bts:
             dx=1.0,dy=self.dy,dz=self.dz,
             dataname=['fluctuations'], #dataname=['TurbSim_velocity'],
             origin=[0.,self.y[0],self.z[0]],
-            indexorder='ijk')
+            indexorder='ijk')# }}}
 
-
-    def writeVTKSeries(self,prefix=None,step=1,stdout='verbose'):
+    def writeVTKSeries(self,prefix=None,step=1,stdout='verbose'):# {{{
         """ Call writeVTK for a range of times
         """
         if not prefix: prefix = self.prefix
         for i in range(0,self.N,step):
             fname = prefix + '_' + str(i) + '.vtk'
             self.writeVTK(fname,itime=i,stdout=stdout)
-	if stdout=='overwrite': sys.stdout.write('\n')
+	if stdout=='overwrite': sys.stdout.write('\n')# }}}
 
 #===============================================================================
 #===============================================================================
@@ -210,9 +289,10 @@ if __name__=='__main__':
     field = turbsim_bts(prefix,verbose=True)
 
     #field.tileY(3)
-    field.tileY(3,mirror=True)
+#    field.tileY(3,mirror=True)
 
     #field.writeVTKSeries(prefix='vtk/Kaimal_15') #,step=10)
     #field.writeVTKSeries(prefix='vtk/Kaimal_15', step=5, stdout='overwrite')
 #    field.writeVTKSeries(prefix='vtk_tile3/Kaimal_15', step=5, stdout='overwrite')
 
+    field.writeMappedBC('west',interval=10,Tmax=1000.,bcname='west')
