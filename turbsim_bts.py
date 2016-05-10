@@ -22,7 +22,7 @@ showprogress = False
 class turbsim_bts:
     realtype = np.float32
 
-    def __init__(self,prefix,verbose=False,Umean=0.0):
+    def __init__(self,prefix,verbose=False,Umean=-1):
         """ Handle bts files containing binary full-field time series output from TurbSim.
         Tested with TurbSim v2.00.05c-bjj, 25-Feb-2016
         """
@@ -35,7 +35,6 @@ class turbsim_bts:
     def _readBTS(self,prefix,verbose=False):
         """ Process AeroDyn full-field files
         """
-        if verbose: print 'Umean =',self.Umean
         fname = prefix + '.bts'
         with binaryfile(fname) as f:
             #
@@ -69,11 +68,13 @@ class turbsim_bts:
                 print '  TimeStep=',self.dt
 
             # - read reference values
-            self.uhub = f.read_float(dtype=self.realtype) # NOT USED
+            self.uhub = f.read_float(dtype=self.realtype)
             self.zhub = f.read_float(dtype=self.realtype) # NOT USED
             self.zbot = f.read_float(dtype=self.realtype)
+            if self.Umean < 0: self.Umean = self.uhub
             if verbose:
-                print '  uhub=',self.uhub,' (NOT USED)'
+                print '  Umean =',self.Umean,'(for calculating fluctuations)'
+                print '  uhub=',self.uhub#,' (NOT USED)'
                 print '  HubHt=',self.zhub,' (NOT USED)'
                 print '  Zbottom=',self.zbot
 
@@ -98,11 +99,7 @@ class turbsim_bts:
             #
             # read normalized data
             #
-            #for it in range(self.N):
-            #    for iz in range(self.NZ):
-            #        for iy in range(self.NY):
-            #            for i in range(3):
-            # need to specify Fortran-order to properly read data using np.nditer
+            # note: need to specify Fortran-order to properly read data using np.nditer
             t0 = time.clock()
 
             if verbose:
@@ -157,8 +154,11 @@ class turbsim_bts:
             self.ztow = self.zbot - np.arange(self.NZ,dtype=self.realtype)*self.dz
 
             self.t = np.arange(self.N,dtype=self.realtype)*self.dt
-            if verbose: print 'Read times',self.t
-    #--end of self._readBTS
+            if verbose:
+                #print 'Read times',self.t
+                print 'Read times',np.cat(t[:3],t[-3:])
+
+    #--end of self._readBTS()
 
     def tileY(self,ntiles,mirror=False):
         """ Duplicate field in lateral direction
