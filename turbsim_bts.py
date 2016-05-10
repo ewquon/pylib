@@ -160,15 +160,25 @@ class turbsim_bts:
             if verbose: print 'Read times',self.t
     #--end of self._readBTS
 
-    def tileY(self,ntiles):
+    def tileY(self,ntiles,mirror=False):
         """ Duplicate field in lateral direction
         ntiles is the final number of panels including the original
+        Set mirror to True to flip every other tile
         """
         ntiles = int(ntiles)
         print 'Creating',ntiles,'horizontal tiles'
         print '  before:',self.V.shape
         self.V = np.tile(self.V,(1,ntiles,1,1))
         print '  after :',self.V.shape
+
+        if mirror:
+            for i in range(1,ntiles,2):
+                print '  flipping panel',i
+                #self.V[:,:,:,:] = self.V[:,i*self.NY:(i+1)*self.NY:-1,:,:]
+                ist = i*self.NY
+                ind = (i+1)*self.NY
+                self.V[:,ist:ind,:,:] = self.V[:,ind-1:ist-1:-1,:,:]
+
         self.NY *= ntiles
         assert( self.V.shape == (3,self.NY,self.NZ,self.N) )
 
@@ -215,7 +225,8 @@ if __name__=='__main__':
     prefix = 'Kaimal_15'
     field = turbsim_bts(prefix,verbose=True,Umean=6.8)
 
-    field.tileY(3)
+    #field.tileY(3)
+    field.tileY(3,mirror=True)
 
     #field.writeVTKSeries(prefix='vtk/Kaimal_15') #,step=10)
     #field.writeVTKSeries(prefix='vtk/Kaimal_15', step=5, stdout='overwrite')
