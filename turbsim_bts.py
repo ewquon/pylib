@@ -7,7 +7,17 @@ import sys
 import numpy as np
 import VTKwriter
 from binario import *
+
 import time
+
+# THIS SLOWS DOWN THE FILE I/O BY AT LEAST A FACTOR OF 2x
+#try:
+#    import progressbar
+#    showprogress = True
+#except:
+#    showprogress = False
+showprogress = False
+
 
 class turbsim_bts:
     realtype = np.float32
@@ -23,6 +33,8 @@ class turbsim_bts:
         self._readBTS(prefix,verbose=verbose)
 
     def _readBTS(self,prefix,verbose=False):
+        """ Process AeroDyn full-field files
+        """
         if verbose: print 'Umean =',self.Umean
         fname = prefix + '.bts'
         with binaryfile(fname) as f:
@@ -49,8 +61,10 @@ class turbsim_bts:
             self.dz = f.read_float(dtype=self.realtype)
             self.dy = f.read_float(dtype=self.realtype)
             self.dt = f.read_float(dtype=self.realtype)
+            self.Nsize = 3*self.NY*self.NZ*self.N
             if verbose:
                 print '  nt=',self.N
+                print '  (problem size: {:d})'.format(self.Nsize)
                 print '  dz,dy=',self.dz,self.dy
                 print '  TimeStep=',self.dt
 
@@ -90,18 +104,34 @@ class turbsim_bts:
             #            for i in range(3):
             # need to specify Fortran-order to properly read data using np.nditer
             t0 = time.clock()
-            if verbose: print 'Reading normalized grid data'
+
+            if verbose:
+                if showprogress:
+                    pbardesc = ['Reading normalized grid data ',progressbar.Percentage(),progressbar.Bar()]
+                    pbar = progressbar.ProgressBar( widgets=pbardesc, maxval=self.Nsize).start()
+                else: print 'Reading normalized grid data'
             self.V = np.zeros((3,self.NY,self.NZ,self.N),order='F',dtype=self.realtype)
-            for val in np.nditer(self.V, op_flags=['writeonly']):
+            for ival,val in zip( np.arange(self.Nsize), np.nditer(self.V, op_flags=['writeonly']) ):
                 val[...] = f.read_int2()
+                if verbose and showprogress: pbar.update(ival)
+            if verbose and showprogress: pbar.finish()
 
             if self.Ntower > 0:
                 self.Vtow = np.zeros((3,self.Ntower,self.N),order='F',dtype=self.realtype)
-                if verbose: print 'Reading normalized tower data'
+                ival = 0
+                if verbose:
+                    if showprogress:
+                        pbardesc = ['Reading normalized tower data ',progressbar.Percentage(),progressbar.Bar()]
+
+                        pbar = progressbar.ProgressBar( widgets=pbardesc, maxval=3*self.Ntower*self.N).start()
+                    else: print 'Reading normalized tower data'
                 for val in np.nditer(self.Vtow, op_flags=['writeonly']):
                     val[...] = f.read_int2()
+                    if verbose and showprogress: pbar.update(ival)
+                    ival += 1
+                if verbose and showprogress: pbar.finish()
 
-            if verbose: print 'Velocitiy fields read in',time.clock()-t0,'s'
+            if verbose: print '  Read velocitiy fields in',time.clock()-t0,'s'
                             
             #
             # calculate dimensional velocity
@@ -128,11 +158,23 @@ class turbsim_bts:
 
             self.t = np.arange(self.N,dtype=self.realtype)*self.dt
             if verbose: print 'Read times',self.t
+    #--end of self._readBTS
+
+    def tileY(self,ntiles):
+        """ Duplicate field in lateral direction
+        ntiles is the final number of panels including the original
+        """
+        ntiles = int(ntiles)
+        print 'Creating',ntiles,'horizontal tiles'
+        print '  before:',self.V.shape
+        self.V = np.tile(self.V,(1,ntiles,1,1))
+        print '  after :',self.V.shape
+        self.NY *= ntiles
+        assert( self.V.shape == (3,self.NY,self.NZ,self.N) )
 
     def writeVTK(self,fname,itime=None,output_time=None,stdout='verbose'):
         """ Write out binary VTK file with a single vector field.
         Can specify time index or output time.
-        Note: VTKwriter expects velocity arrays of form u[NY,NX,NZ]
         """
         if output_time:
             itime = int(output_time / self.dt)
@@ -172,6 +214,10 @@ class turbsim_bts:
 if __name__=='__main__':
     prefix = 'Kaimal_15'
     field = turbsim_bts(prefix,verbose=True,Umean=6.8)
+
+    field.tileY(3)
+
     #field.writeVTKSeries(prefix='vtk/Kaimal_15') #,step=10)
-    field.writeVTKSeries(prefix='vtk/Kaimal_15', step=5, stdout='overwrite')
+    #field.writeVTKSeries(prefix='vtk/Kaimal_15', step=5, stdout='overwrite')
+    field.writeVTKSeries(prefix='vtk_tile3/Kaimal_15', step=5, stdout='overwrite')
 
