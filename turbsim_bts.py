@@ -14,9 +14,15 @@ import time
 #try:
 #    import progressbar
 #    showprogress = True
-#except:
-#    showprogress = False
+#except: showprogress = False
 showprogress = False
+
+# THIS DOESN'T TRACK MEMORY USAGE BY EXTENSIONS (e.g. numpy)
+#try:
+#    import guppy
+#    memusage = True
+#except: memusage = False
+memusage = False
 
 
 class turbsim_bts:
@@ -101,6 +107,7 @@ class turbsim_bts:
             #
             # note: need to specify Fortran-order to properly read data using np.nditer
             t0 = time.clock()
+            if memusage: print guppy.hpy().heap()
 
             if verbose:
                 if showprogress:
@@ -129,6 +136,7 @@ class turbsim_bts:
                 if verbose and showprogress: pbar.finish()
 
             if verbose: print '  Read velocitiy fields in',time.clock()-t0,'s'
+            if memusage: print guppy.hpy().heap()
                             
             #
             # calculate dimensional velocity
@@ -156,7 +164,7 @@ class turbsim_bts:
             self.t = np.arange(self.N,dtype=self.realtype)*self.dt
             if verbose:
                 #print 'Read times',self.t
-                print 'Read times',np.cat(t[:3],t[-3:])
+                print 'Read times [',self.t[0],self.t[1],'...',self.t[-1],']'
 
     #--end of self._readBTS()
 
