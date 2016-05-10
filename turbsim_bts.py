@@ -10,20 +10,7 @@ from binario import *
 
 import time
 
-# THIS SLOWS DOWN THE FILE I/O BY AT LEAST A FACTOR OF 2x
-#try:
-#    import progressbar
-#    showprogress = True
-#except: showprogress = False
-showprogress = False
-
-# THIS DOESN'T TRACK MEMORY USAGE BY EXTENSIONS (e.g. numpy)
-#try:
-#    import guppy
-#    memusage = True
-#except: memusage = False
-memusage = False
-
+#from memory_profiler import profile #-- THIS IS SLOW
 
 class turbsim_bts:
     realtype = np.float32
@@ -38,6 +25,7 @@ class turbsim_bts:
         self.field = dict() #full NY x NZ field
         self._readBTS(prefix,verbose=verbose)
 
+    #@profile
     def _readBTS(self,prefix,verbose=False):
         """ Process AeroDyn full-field files
         """
@@ -107,36 +95,21 @@ class turbsim_bts:
             #
             # note: need to specify Fortran-order to properly read data using np.nditer
             t0 = time.clock()
-            if memusage: print guppy.hpy().heap()
 
-            if verbose:
-                if showprogress:
-                    pbardesc = ['Reading normalized grid data ',progressbar.Percentage(),progressbar.Bar()]
-                    pbar = progressbar.ProgressBar( widgets=pbardesc, maxval=self.Nsize).start()
-                else: print 'Reading normalized grid data'
+            if verbose: print 'Reading normalized grid data'
             self.V = np.zeros((3,self.NY,self.NZ,self.N),order='F',dtype=self.realtype)
-            for ival,val in zip( np.arange(self.Nsize), np.nditer(self.V, op_flags=['writeonly']) ):
+            print '  V size :',self.V.nbytes/1024.**2,'MB'
+            for val in np.nditer(self.V, op_flags=['writeonly']):
                 val[...] = f.read_int2()
-                if verbose and showprogress: pbar.update(ival)
-            if verbose and showprogress: pbar.finish()
 
             if self.Ntower > 0:
                 self.Vtow = np.zeros((3,self.Ntower,self.N),order='F',dtype=self.realtype)
-                ival = 0
-                if verbose:
-                    if showprogress:
-                        pbardesc = ['Reading normalized tower data ',progressbar.Percentage(),progressbar.Bar()]
-
-                        pbar = progressbar.ProgressBar( widgets=pbardesc, maxval=3*self.Ntower*self.N).start()
-                    else: print 'Reading normalized tower data'
+                print '  Vtow size :',self.Vtow.nbytes/1024.**2,'MB'
+                if verbose: print 'Reading normalized tower data'
                 for val in np.nditer(self.Vtow, op_flags=['writeonly']):
                     val[...] = f.read_int2()
-                    if verbose and showprogress: pbar.update(ival)
-                    ival += 1
-                if verbose and showprogress: pbar.finish()
 
             if verbose: print '  Read velocitiy fields in',time.clock()-t0,'s'
-            if memusage: print guppy.hpy().heap()
                             
             #
             # calculate dimensional velocity
@@ -149,6 +122,7 @@ class turbsim_bts:
                     self.Vtow[i,:,:] -= self.Vintercept[i]
                     self.Vtow[i,:,:] /= self.Vslope[i]
 
+            #print '  V size :',self.V.nbytes/1042.**2,'MB'
             print '  u min/max [',np.min(self.V[0,:,:,:]),np.max(self.V[0,:,:,:]),']'
             print '  v min/max [',np.min(self.V[1,:,:,:]),np.max(self.V[1,:,:,:]),']'
             print '  w min/max [',np.min(self.V[2,:,:,:]),np.max(self.V[2,:,:,:]),']'
@@ -168,6 +142,7 @@ class turbsim_bts:
 
     #--end of self._readBTS()
 
+    #@profile
     def tileY(self,ntiles,mirror=False):
         """ Duplicate field in lateral direction
         ntiles is the final number of panels including the original
@@ -231,12 +206,13 @@ class turbsim_bts:
 # testing
 if __name__=='__main__':
     prefix = 'Kaimal_15'
-    field = turbsim_bts(prefix,verbose=True,Umean=6.8)
+    #field = turbsim_bts(prefix,verbose=True,Umean=6.8)
+    field = turbsim_bts(prefix,verbose=True)
 
     #field.tileY(3)
     field.tileY(3,mirror=True)
 
     #field.writeVTKSeries(prefix='vtk/Kaimal_15') #,step=10)
     #field.writeVTKSeries(prefix='vtk/Kaimal_15', step=5, stdout='overwrite')
-    field.writeVTKSeries(prefix='vtk_tile3/Kaimal_15', step=5, stdout='overwrite')
+#    field.writeVTKSeries(prefix='vtk_tile3/Kaimal_15', step=5, stdout='overwrite')
 
