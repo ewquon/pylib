@@ -12,28 +12,31 @@ import time
 class turbsim_bts:
     realtype = np.float32
 
-    def __init__(self,prefix,verbose=False):
+    def __init__(self,prefix,verbose=False,Umean=0.0):
         """ Handle bts files containing binary full-field time series output from TurbSim.
         Tested with TurbSim v2.00.05c-bjj, 25-Feb-2016
         """
         self.prefix = prefix
+        self.Umean = Umean
         self.hub = dict() #hub-height wind speeds
         self.field = dict() #full NY x NZ field
         self._readBTS(prefix,verbose=verbose)
 
     def _readBTS(self,prefix,verbose=False):
+        if verbose: print 'Umean =',self.Umean
         fname = prefix + '.bts'
         with binaryfile(fname) as f:
             #
             # read header info
             #
-            print 'Reading header information'
+            if verbose: print 'Reading header information from',fname
+
             ID = f.read_int2()
             assert( ID==7 or ID==8 )
             if ID==7: filetype = 'non-periodic'
             elif ID==8: filetype = 'periodic'
             else: filetype = 'UNKNOWN'
-            print '  id= {:d} ({:s})'.format(ID,filetype)
+            if verbose: print '  id= {:d} ({:s})'.format(ID,filetype)
 
             # - read resolution settings
             self.NZ = f.read_int4()
@@ -43,32 +46,35 @@ class turbsim_bts:
                 print '  NumGrid_Z,_Y=',self.NZ,self.NY
                 print '  ntower=',self.Ntower
             self.N = f.read_int4()
-            self.dz = f.read_float()
-            self.dy = f.read_float()
-            self.dt = f.read_float()
+            self.dz = f.read_float(dtype=self.realtype)
+            self.dy = f.read_float(dtype=self.realtype)
+            self.dt = f.read_float(dtype=self.realtype)
             if verbose:
                 print '  nt=',self.N
                 print '  dz,dy=',self.dz,self.dy
                 print '  TimeStep=',self.dt
 
             # - read reference values
-            self.uhub = f.read_float()
-            self.zhub = f.read_float()
-            self.zbot = f.read_float()
+            self.uhub = f.read_float(dtype=self.realtype) # NOT USED
+            self.zhub = f.read_float(dtype=self.realtype) # NOT USED
+            self.zbot = f.read_float(dtype=self.realtype)
             if verbose:
-                print '  uhub=',self.uhub
-                print '  HubHt=',self.zhub
+                print '  uhub=',self.uhub,' (NOT USED)'
+                print '  HubHt=',self.zhub,' (NOT USED)'
                 print '  Zbottom=',self.zbot
 
             # - read scaling factors
             self.Vslope = np.zeros(3,dtype=self.realtype)
             self.Vintercept = np.zeros(3,dtype=self.realtype)
             for i in range(3):
-                self.Vslope[i] = f.read_float()
-                self.Vintercept[i] = f.read_float()
+                self.Vslope[i] = f.read_float(dtype=self.realtype)
+                self.Vintercept[i] = f.read_float(dtype=self.realtype)
             if verbose:
-                print '  Vslope=',self.Vslope
-                print '  Vintercept=',self.Vintercept
+                # output is float64 precision by default...
+                #print '  Vslope=',self.Vslope
+                #print '  Vintercept=',self.Vintercept
+                print '  Vslope=',[self.Vslope[i] for i in range(3)]
+                print '  Vintercept=',[self.Vintercept[i] for i in range(3)]
 
             # - read turbsim info string
             nchar = f.read_int4()
@@ -83,8 +89,8 @@ class turbsim_bts:
             #        for iy in range(self.NY):
             #            for i in range(3):
             # need to specify Fortran-order to properly read data using np.nditer
-            if verbose: print 'Reading normalized grid data'
             t0 = time.clock()
+            if verbose: print 'Reading normalized grid data'
             self.V = np.zeros((3,self.NY,self.NZ,self.N),order='F',dtype=self.realtype)
             for val in np.nditer(self.V, op_flags=['writeonly']):
                 val[...] = f.read_int2()
@@ -94,15 +100,13 @@ class turbsim_bts:
                 if verbose: print 'Reading normalized tower data'
                 for val in np.nditer(self.Vtow, op_flags=['writeonly']):
                     val[...] = f.read_int2()
-            if verbose: 'Velocitiy fields read in',time.clock(),'s'
+
+            if verbose: print 'Velocitiy fields read in',time.clock()-t0,'s'
                             
             #
             # calculate dimensional velocity
             #
             if verbose: print 'Calculating velocities'
-            print '  u min/max [',np.min(self.V[0,:,:,:]),np.max(self.V[0,:,:,:]),']'
-            print '  v min/max [',np.min(self.V[1,:,:,:]),np.max(self.V[1,:,:,:]),']'
-            print '  w min/max [',np.min(self.V[2,:,:,:]),np.max(self.V[2,:,:,:]),']'
             for i in range(3):
                 self.V[i,:,:,:] -= self.Vintercept[i]
                 self.V[i,:,:,:] /= self.Vslope[i]
@@ -132,14 +136,14 @@ class turbsim_bts:
         """
         if output_time:
             itime = int(output_time / self.dt)
-        if not itime:
+        if itime is None:
             print 'Need to specify itime or output_time'
             return
 	if stdout=='overwrite':
             sys.stdout.write('\rWriting time step {:d} :  t= {:f}'.format(itime,self.t[itime]))
 	else: #if stdout=='verbose':
             print 'Writing out time step',itime,': t=',self.t[itime]
-        u = np.zeros((1,self.NY,self.NZ)); u[0,:,:] = self.V[0,:,:,itime]
+        u = np.zeros((1,self.NY,self.NZ)); u[0,:,:] = self.V[0,:,:,itime] - self.Umean
         v = np.zeros((1,self.NY,self.NZ)); v[0,:,:] = self.V[1,:,:,itime]
         w = np.zeros((1,self.NY,self.NZ)); w[0,:,:] = self.V[2,:,:,itime]
         VTKwriter.vtk_write_structured_points( open(fname,'wb'), #binary mode
@@ -147,7 +151,7 @@ class turbsim_bts:
             [u,v,w],
             datatype=['vector'],
             dx=1.0,dy=self.dy,dz=self.dz,
-            dataname=['TurbSim_velocity'],
+            dataname=['fluctuations'], #dataname=['TurbSim_velocity'],
             origin=[0.,self.y[0],self.z[0]],
             indexorder='ijk')
 
@@ -167,7 +171,7 @@ class turbsim_bts:
 # testing
 if __name__=='__main__':
     prefix = 'Kaimal_15'
-    field = turbsim_bts(prefix,verbose=True)
+    field = turbsim_bts(prefix,verbose=True,Umean=6.8)
     #field.writeVTKSeries(prefix='vtk/Kaimal_15') #,step=10)
-    field.writeVTKSeries(prefix='vtk/Kaimal_15' ,step=10, stdout='overwrite')
+    field.writeVTKSeries(prefix='vtk/Kaimal_15', step=5, stdout='overwrite')
 
