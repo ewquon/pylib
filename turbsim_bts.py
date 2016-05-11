@@ -158,21 +158,34 @@ class turbsim_bts:
         ntiles = int(ntiles)
         print 'Creating',ntiles,'horizontal tiles'
         print '  before:',self.V.shape
-        #self.V = np.tile(self.V,(1,ntiles,1,1))
-        self.V = np.tile(self.V[:,:-1,:,:],(1,ntiles,1,1))
-        self.V = np.concatenate((self.V,self.V[:,0,:,:]),axis=1)
+        #self.V = np.tile(self.V,(1,ntiles,1,1)) #-- this repeats the ymax boundary
+        if mirror:
+            # [0 1 2] --> [0 1 2 1 0 1 2 .. ]
+            NYnew = (self.NY-1)*ntiles + 1
+            Vnew = np.zeros((3,NYnew,self.NZ,self.N))
+            Vnew[:,:self.NY,:,:] = self.V[:,:self.NY,:,:]
+            delta = self.NY - 1
+            flipped = True
+            for i in range(1,ntiles):
+                if flipped:
+                    Vnew[:,i*delta+1:(i+1)*delta+1,:,:] = self.V[:,delta-1::-1,:,:]
+                else:
+                    Vnew[:,i*delta+1:(i+1)*delta+1,:,:] = self.V[:,1:,:,:]
+                flipped = not flipped
+            self.V = Vnew
+        else:
+            # [0 1 2] --> [0 1 0 1 .. 0 1 2]
+            self.V = np.tile(self.V[:,:-1,:,:],(1,ntiles,1,1))
+            plane0 = np.zeros((3,1,self.NZ,self.N))
+            plane0[:,0,:,:] = self.V[:,-1,:,:]
+            self.V = np.concatenate((self.V,plane0),axis=1)
         print '  after :',self.V.shape
 
-        if mirror:
-            for i in range(1,ntiles,2):
-                print '  flipping panel',i
-                #self.V[:,:,:,:] = self.V[:,i*self.NY:(i+1)*self.NY:-1,:,:]
-                ist = i*self.NY
-                ind = (i+1)*self.NY
-                self.V[:,ist:ind,:,:] = self.V[:,ind-1:ist-1:-1,:,:]
 
-        self.NY *= ntiles
+        #self.NY *= ntiles
+        self.NY = NYnew
         assert( self.V.shape == (3,self.NY,self.NZ,self.N) )
+        self.y = -0.5*(self.NY-1)*self.dy + np.arange(self.NY,dtype=self.realtype)*self.dy
 
     def writeMappedBC(self,outputdir,Uprofile=lambda z:0.0,interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):
         """ For use with OpenFOAM's timeVaryingMappedFixedValue boundary condition.
@@ -293,10 +306,15 @@ if __name__=='__main__':
     #field = turbsim_bts(prefix,verbose=True,Umean=6.8)
     field = turbsim_bts(prefix,verbose=True)
 
-    field.writeVTKSeries(prefix='vtk/Kaimal_15', step=10, stdout='overwrite')
+#    field.writeVTKSeries(prefix='vtk/Kaimal_15', step=10, stdout='overwrite')
 
-    #field.tileY(3)
+#    field.writeMappedBC('west',Uprofile=lambda z:6.0,interval=10,Tmax=1000.,bcname='west')
+
 #    field.tileY(3,mirror=True)
 #    field.writeVTKSeries(prefix='vtk_tile3/Kaimal_15', step=5, stdout='overwrite')
 
-    field.writeMappedBC('west',Uprofile=lambda z:6.0,interval=10,Tmax=1000.,bcname='west')
+    field.tileY(2,mirror=True)
+    field.writeVTKSeries(prefix='vtk_tile2/Kaimal_15', step=10, stdout='overwrite')
+    field.writeMappedBC('west2',Uprofile=lambda z:6.0,interval=10,Tmax=1200.,bcname='west')
+
+
