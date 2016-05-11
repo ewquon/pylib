@@ -152,8 +152,8 @@ class turbsim_bts:
     #@profile
     def tileY(self,ntiles,mirror=False):
         """ Duplicate field in lateral direction
-        ntiles is the final number of panels including the original
-        Set mirror to True to flip every other tile
+        'ntiles' is the final number of panels including the original
+        Set 'mirror' to True to flip every other tile
         """
         ntiles = int(ntiles)
         print 'Creating',ntiles,'horizontal tiles'
@@ -174,7 +174,7 @@ class turbsim_bts:
         self.NY *= ntiles
         assert( self.V.shape == (3,self.NY,self.NZ,self.N) )
 
-    def writeMappedBC(self,outputdir,interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):
+    def writeMappedBC(self,outputdir,Uprofile=lambda z:0.0,interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):
         """ For use with OpenFOAM's timeVaryingMappedFixedValue boundary condition.
         This will create a points file and time directories in 'outputdir', which should be placed in constant/boundaryData/<patchname>.
         """
@@ -222,11 +222,13 @@ FoamFile
 {{
     version     2.0;
     format      ascii;
-    class       vectorField;
+    class       vectorAverageField;
     location    "constant/boundaryData/{patchName}/{timeName}";
     object      values;
 }}
-// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //\n\n"""
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+// Average
+(0 0 0)\n\n"""
         if Tmax is None: Tmax = self.T
         Nsteps = int(Tmax / self.dt)
         for i in range(0,Nsteps,interval):
@@ -240,8 +242,11 @@ FoamFile
                 f.write(datahdr.format(patchName=bcname,timeName=tname))
                 f.write('{:d}\n(\n'.format(self.NY*self.NZ))
                 for j in range(self.NZ):
+                    Uinlet = np.array([Uprofile(self.z[j]),0,0])
+                    #print ' ',self.z[j],Uinlet
                     for i in range(self.NY):
-                        f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]))
+                        #f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]))
+                        f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]+Uinlet))
                 f.write(')\n')
 
 
@@ -288,11 +293,10 @@ if __name__=='__main__':
     #field = turbsim_bts(prefix,verbose=True,Umean=6.8)
     field = turbsim_bts(prefix,verbose=True)
 
+    field.writeVTKSeries(prefix='vtk/Kaimal_15', step=10, stdout='overwrite')
+
     #field.tileY(3)
 #    field.tileY(3,mirror=True)
-
-    #field.writeVTKSeries(prefix='vtk/Kaimal_15') #,step=10)
-    #field.writeVTKSeries(prefix='vtk/Kaimal_15', step=5, stdout='overwrite')
 #    field.writeVTKSeries(prefix='vtk_tile3/Kaimal_15', step=5, stdout='overwrite')
 
-    field.writeMappedBC('west',interval=10,Tmax=1000.,bcname='west')
+    field.writeMappedBC('west',Uprofile=lambda z:6.0,interval=10,Tmax=1000.,bcname='west')
