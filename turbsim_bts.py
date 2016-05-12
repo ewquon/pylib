@@ -1,6 +1,6 @@
 #!/usr/local/bin/python
 #
-# TurbSim data processing module (binary AeroDyn format)
+# TurbSim data processing module (binary AeroDyn .bts format)
 # written by Eliot Quon (eliot.quon@nrel.gov)
 #
 import sys
@@ -11,6 +11,9 @@ from binario import *
 import time
 
 #from memory_profiler import profile #-- THIS IS SLOW
+# faster to uncomment the @profile lines and then run from the command line:
+#   mprof run turbsim_bts.py
+#   mprof plot
 
 class turbsim_bts:
     realtype = np.float32
@@ -26,7 +29,7 @@ class turbsim_bts:
         self._readBTS(prefix,verbose=verbose)
 
     #@profile
-    def _readBTS(self,prefix,verbose=False):
+    def _readBTS(self,prefix,verbose=False):# {{{
         """ Process AeroDyn full-field files
         """
         fname = prefix + '.bts'
@@ -147,10 +150,74 @@ class turbsim_bts:
                 #print 'Read times',self.t
                 print 'Read times [',self.t[0],self.t[1],'...',self.t[-1],']'
 
-    #--end of self._readBTS()
+    #--end of self._readBTS()# }}}
+
+    def checkDivergence(self):
+        print 'Calculating divergence at every point in spatio-temporal grid'
+        twodx = 2.*self.uhub*self.dt
+        twody = 2.*self.dy
+        twodz = 2.*self.dz
+        self.div = np.zeros((self.N-2,self.NY-2,self.NZ-2))
+        for k in range(1,self.NZ-1):
+            for j in range(1,self.NY-1):
+                for i in range(1,self.N-1):
+                    self.div[i-1,j-1,k-1] = \
+                            (self.V[0,j  ,k  ,i+1]-self.V[0,j  ,k  ,i-1])/twodx + \
+                            (self.V[1,j+1,k  ,i  ]-self.V[1,j-1,k  ,i  ])/twody + \
+                            (self.V[2,j  ,k+1,i  ]-self.V[2,j  ,k-1,i  ])/twodz
+        self.divmean = np.mean(field.div,axis=(1,2))
+        self.divmax = np.max(np.abs(field.div),axis=(1,2))
+
+        print 'Integrating velocity fluxes'
+        dS = self.dy*self.dz
+        dSy= self.dz*self.uhub*self.dt
+        dSz= self.dy*self.uhub*self.dt
+        self.intdiv = np.zeros(self.N-1)
+        for i in range(self.N-1):
+            Uin = (\
+                  self.V[0, :-1, :-1,i] \
+                + self.V[0, :-1,1:  ,i] \
+                + self.V[0,1:  , :-1,i] \
+                + self.V[0,1:  ,1:  ,i] \
+                ) / 4.
+            Uout = (\
+                  self.V[0, :-1, :-1,i+1] \
+                + self.V[0, :-1,1:  ,i+1] \
+                + self.V[0,1:  , :-1,i+1] \
+                + self.V[0,1:  ,1:  ,i+1] \
+                ) / 4.
+            Vin = (\
+                  self.V[1,0, :-1,i  ] \
+                + self.V[1,0, :-1,i+1] \
+                + self.V[1,0,1:  ,i  ] \
+                + self.V[1,0,1:  ,i+1] \
+                ) / 4.
+            Vout = (\
+                  self.V[1,-1, :-1,i  ] \
+                + self.V[1,-1, :-1,i+1] \
+                + self.V[1,-1,1:  ,i  ] \
+                + self.V[1,-1,1:  ,i+1] \
+                ) / 4.
+            Win = (\
+                  self.V[2, :-1,0,i  ] \
+                + self.V[2, :-1,0,i+1] \
+                + self.V[2,1:  ,0,i  ] \
+                + self.V[2,1:  ,0,i+1] \
+                ) / 4.
+            Wout = (\
+                  self.V[2, :-1,-1,i  ] \
+                + self.V[2, :-1,-1,i+1] \
+                + self.V[2,1:  ,-1,i  ] \
+                + self.V[2,1:  ,-1,i+1] \
+                ) / 4.
+            self.intdiv[i] = \
+                dS*(np.sum(Uin) - np.sum(Uout)) + \
+                dSy*(np.sum(Vin) - np.sum(Vout)) + \
+                dSz*(np.sum(Win) - np.sum(Wout))
+
 
     #@profile
-    def tileY(self,ntiles,mirror=False):
+    def tileY(self,ntiles,mirror=False):# {{{
         """ Duplicate field in lateral direction
         'ntiles' is the final number of panels including the original
         Set 'mirror' to True to flip every other tile
@@ -181,13 +248,12 @@ class turbsim_bts:
             self.V = np.concatenate((self.V,plane0),axis=1)
         print '  after :',self.V.shape
 
-
         #self.NY *= ntiles
         self.NY = NYnew
         assert( self.V.shape == (3,self.NY,self.NZ,self.N) )
-        self.y = -0.5*(self.NY-1)*self.dy + np.arange(self.NY,dtype=self.realtype)*self.dy
+        self.y = -0.5*(self.NY-1)*self.dy + np.arange(self.NY,dtype=self.realtype)*self.dy# }}}
 
-    def writeMappedBC(self,outputdir,Uprofile=lambda z:0.0,interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):
+    def writeMappedBC(self,outputdir,Uprofile=lambda z:0.0,interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):# {{{
         """ For use with OpenFOAM's timeVaryingMappedFixedValue boundary condition.
         This will create a points file and time directories in 'outputdir', which should be placed in constant/boundaryData/<patchname>.
         """
@@ -260,8 +326,7 @@ FoamFile
                     for i in range(self.NY):
                         #f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]))
                         f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]+Uinlet))
-                f.write(')\n')
-
+                f.write(')\n')# }}}
 
     def writeVTK(self,fname,itime=None,output_time=None,stdout='verbose'):# {{{
         """ Write out binary VTK file with a single vector field.
@@ -306,15 +371,16 @@ if __name__=='__main__':
     #field = turbsim_bts(prefix,verbose=True,Umean=6.8)
     field = turbsim_bts(prefix,verbose=True)
 
-#    field.writeVTKSeries(prefix='vtk/Kaimal_15', step=10, stdout='overwrite')
+    field.checkDivergence()
 
+#    field.writeVTKSeries(prefix='vtk/Kaimal_15', step=10, stdout='overwrite')
 #    field.writeMappedBC('west',Uprofile=lambda z:6.0,interval=10,Tmax=1000.,bcname='west')
 
 #    field.tileY(3,mirror=True)
 #    field.writeVTKSeries(prefix='vtk_tile3/Kaimal_15', step=5, stdout='overwrite')
 
-    field.tileY(2,mirror=True)
-    field.writeVTKSeries(prefix='vtk_tile2/Kaimal_15', step=10, stdout='overwrite')
-    field.writeMappedBC('west2',Uprofile=lambda z:6.0,interval=10,Tmax=1200.,bcname='west')
+#    field.tileY(2,mirror=True)
+#    field.writeVTKSeries(prefix='vtk_tile2/Kaimal_15', step=10, stdout='overwrite')
+#    field.writeMappedBC('west2',Uprofile=lambda z:6.0,interval=10,Tmax=1200.,bcname='west')
 
 
