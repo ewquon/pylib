@@ -147,7 +147,7 @@ class turbsim_bts:
             if verbose: print 'Calculating coordinates'
             self.y = -0.5*(self.NY-1)*self.dy + np.arange(self.NY,dtype=self.realtype)*self.dy
             self.z = self.zbot + np.arange(self.NZ,dtype=self.realtype)*self.dz
-            self.ztow = self.zbot - np.arange(self.NZ,dtype=self.realtype)*self.dz
+            #self.ztow = self.zbot - np.arange(self.NZ,dtype=self.realtype)*self.dz #--NOT USED
 
             self.t = np.arange(self.N,dtype=self.realtype)*self.dt
             if verbose:
@@ -283,6 +283,41 @@ class turbsim_bts:
         assert( self.V.shape == (3,self.NY,self.NZ,self.N) )
         self.y = -0.5*(self.NY-1)*self.dy + np.arange(self.NY,dtype=self.realtype)*self.dy# }}}
 
+    def extendZ(self,zMin,zMax):# {{{
+        """ Extend TurbSim domain to fit LES domain and update NZ
+        Values between zMin and min(z) will be duplicated from V[:3,y,z=min(z),t]
+        Values between max(z) and zMax will be zero
+        """
+        if zMin > self.z[0]:
+            print 'zMin not changed from',self.z[0],'to',zMin
+            return
+        if zMax < self.z[-1]:
+            print 'zMax not changed from',self.z[-1],'to',zMax
+            return
+
+        imin = int(zMin/self.dz)
+        imax = int(zMax/self.dz)
+        zMin = imin*self.dz
+        zMax = imax*self.dz
+        ioff = int((self.z[0]-zMin)/self.dz)
+        print 'Extending fluctuations field in z-dir from [', self.z[0],self.z[-1],'] to [',zMin,zMax,']'
+        print '  before:',self.V.shape
+        
+        newNZ = imax-imin+1
+        Vnew = np.zeros( (3,self.NY,newNZ,self.N) )
+        for iz in range(ioff):
+            Vnew[:,:,iz,:] = self.V[:,:,0,:]
+        Vnew[:,:,ioff:ioff+self.NZ,:] = self.V
+
+        self.V = Vnew
+        self.NZ = newNZ
+        print '  after:',self.V.shape
+
+        print 'Updating z coordinates'
+        self.z = zMin + np.arange(self.NZ,dtype=self.realtype)*self.dz
+
+    # }}}
+
     def setMeanProfiles(self,Uprofile=lambda z:[0.0,0.0,0.0],Tprofile=lambda z:0.0):# {{{
         """ Sets the mean velocity and temperature profiles (affects output from writeMappedBC and writeVTK)
         Called by readMeanProfile after reading in post-processed planar averages.
@@ -415,19 +450,22 @@ FoamFile
             sys.stdout.write('\rWriting time step {:d} :  t= {:f}'.format(itime,self.t[itime]))
 	else: #if stdout=='verbose':
             print 'Writing out time step',itime,': t=',self.t[itime]
-        u = np.zeros((1,self.NY,self.NZ)); u[0,:,:] = self.V[0,:,:,itime]
-        v = np.zeros((1,self.NY,self.NZ)); v[0,:,:] = self.V[1,:,:,itime]
-        w = np.zeros((1,self.NY,self.NZ)); w[0,:,:] = self.V[2,:,:,itime]
+        up = np.zeros((1,self.NY,self.NZ)); up[0,:,:] = self.V[0,:,:,itime]
+        vp = np.zeros((1,self.NY,self.NZ)); vp[0,:,:] = self.V[1,:,:,itime]
+        wp = np.zeros((1,self.NY,self.NZ)); wp[0,:,:] = self.V[2,:,:,itime]
+        u = up.copy()
+        v = vp.copy()
+        w = wp.copy()
         for iz in range(self.NZ):
             u[0,:,iz] += self.Uinlet[iz,0]
             v[0,:,iz] += self.Uinlet[iz,1]
             w[0,:,iz] += self.Uinlet[iz,2]
         VTKwriter.vtk_write_structured_points( open(fname,'wb'), #binary mode
             1,self.NY,self.NZ,
-            [u,v,w],
-            datatype=['vector'],
+            [ u,v,w, up,vp,wp ],
+            datatype=['vector','vector'],
             dx=1.0,dy=self.dy,dz=self.dz,
-            dataname=['fluctuations'], #dataname=['TurbSim_velocity'],
+            dataname=['U','u\''], #['fluctuations'], #dataname=['TurbSim_velocity'],
             origin=[0.,self.y[0],self.z[0]],
             indexorder='ijk')# }}}
 
