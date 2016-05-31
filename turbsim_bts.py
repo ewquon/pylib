@@ -26,6 +26,10 @@ class turbsim_bts:
         self.Umean = Umean
         self.hub = dict() #hub-height wind speeds
         self.field = dict() #full NY x NZ field
+
+        self.meanProfilesSet = False
+        self.meanProfilesRead = False
+
         self._readBTS(prefix,verbose=verbose)
 
     #@profile
@@ -152,7 +156,34 @@ class turbsim_bts:
 
     #--end of self._readBTS()# }}}
 
-    def checkDivergence(self):
+    def readMeanProfile(self,Ufile='U.dat',Vfile='V.dat',Tfile='T.dat'):# {{{
+        """ Read planar averages (postprocessed separately) into arrays for interpolating
+        Assumed that the heights in all files are the same
+        """
+        hmean,Umean,Vmean,Tmean = [], [], [], []
+        with open(Ufile,'r') as f:
+            for line in f:
+                line = line.split()
+                hmean.append( float(line[0]) )
+                Umean.append( float(line[1]) )
+        with open(Vfile,'r') as f:
+            for line in f:
+                Vmean.append( float(line.split()[1]) )
+        with open(Tfile,'r') as f:
+            for line in f:
+                Tmean.append( float(line.split()[1]) )
+        assert( len(hmean)==len(Umean) and len(Umean)==len(Vmean) and len(Vmean)==len(Tmean) )
+
+        from scipy import interpolate
+        self.Ufn = interpolate.interp1d(hmean,Umean,kind='linear',fill_value='extrapolate')
+        self.Vfn = interpolate.interp1d(hmean,Vmean,kind='linear',fill_value='extrapolate')
+        self.Tfn = interpolate.interp1d(hmean,Tmean,kind='linear',fill_value='extrapolate')
+        self.meanProfilesRead = True
+
+        self.setMeanProfiles( Uprofile=lambda z: [self.Ufn(z),self.Vfn(z),0.0], Tprofile=lambda z: self.Tfn(z) )
+    # }}}
+
+    def checkDivergence(self):# {{{
         print 'Calculating divergence at every point in spatio-temporal grid'
         twodx = 2.*self.uhub*self.dt
         twody = 2.*self.dy
@@ -213,8 +244,7 @@ class turbsim_bts:
             self.intdiv[i] = \
                 dS*(np.sum(Uin) - np.sum(Uout)) + \
                 dSy*(np.sum(Vin) - np.sum(Vout)) + \
-                dSz*(np.sum(Win) - np.sum(Wout))
-
+                dSz*(np.sum(Win) - np.sum(Wout))# }}}
 
     #@profile
     def tileY(self,ntiles,mirror=False):# {{{
@@ -253,14 +283,37 @@ class turbsim_bts:
         assert( self.V.shape == (3,self.NY,self.NZ,self.N) )
         self.y = -0.5*(self.NY-1)*self.dy + np.arange(self.NY,dtype=self.realtype)*self.dy# }}}
 
-    def writeMappedBC(self,outputdir,Uprofile=lambda z:0.0,interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):# {{{
+    def setMeanProfiles(self,Uprofile=lambda z:[0.0,0.0,0.0],Tprofile=lambda z:0.0):# {{{
+        """ Sets the mean velocity and temperature profiles (affects output from writeMappedBC and writeVTK)
+        Called by readMeanProfile after reading in post-processed planar averages.
+        Can also be directly called with a user-specified analytical profile.
+        """
+        self.Uinlet = np.zeros((self.NZ,3))
+        self.Tinlet = np.zeros(self.NZ)
+        for iz,z in enumerate(self.z):
+            self.Uinlet[iz,:] = Uprofile(z)
+            self.Tinlet[iz]   = Tprofile(z)
+
+        print 'Set mean profile:  z  U  T'
+        for iz,U in enumerate(self.Uinlet):
+            print self.z[iz],U,self.Tinlet[iz]
+
+        self.meanProfilesSet = True
+    # }}}
+
+    #def writeMappedBC(self,outputdir,Uprofile=lambda z:0.0,interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):
+    def writeMappedBC(self,outputdir='boundaryData',interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):# {{{
         """ For use with OpenFOAM's timeVaryingMappedFixedValue boundary condition.
         This will create a points file and time directories in 'outputdir', which should be placed in constant/boundaryData/<patchname>.
         """
         import os
         if not os.path.isdir(outputdir):
             print 'Creating output dir :',outputdir
-            os.mkdir(outputdir)
+            os.makedirs(outputdir)
+
+        if not self.meanProfilesSet:
+            print 'Note: Mean profiles have not been set or read from files'
+            self.setMeanProfiles()
 
         # write points file
         pointshdr = """/*--------------------------------*- C++ -*----------------------------------*\\
@@ -301,13 +354,13 @@ FoamFile
 {{
     version     2.0;
     format      ascii;
-    class       vectorAverageField;
+    class       {patchType}AverageField;
     location    "constant/boundaryData/{patchName}/{timeName}";
     object      values;
 }}
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 // Average
-(0 0 0)\n\n"""
+{avgValue}\n\n"""
         if Tmax is None: Tmax = self.T
         Nsteps = int(Tmax / self.dt)
         for i in range(0,Nsteps,interval):
@@ -315,23 +368,44 @@ FoamFile
             tname = '{:f}'.format(self.realtype(i*self.dt)).rstrip('0').rstrip('.')
             try: os.mkdir(outputdir+os.sep+tname)
             except: pass
-            fname = outputdir + os.sep + tname + os.sep + 'U'
+            prefix = outputdir + os.sep + tname + os.sep
+
+            #
+            # write out U
+            #
+            fname = prefix + 'U'
             sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
             with open(fname,'w') as f:
-                f.write(datahdr.format(patchName=bcname,timeName=tname))
+                #f.write(datahdr.format(patchName=bcname,timeName=tname))
+                f.write(datahdr.format(patchType='vector',patchName=bcname,timeName=tname,avgValue='(0 0 0)'))
                 f.write('{:d}\n(\n'.format(self.NY*self.NZ))
                 for j in range(self.NZ):
-                    Uinlet = np.array([Uprofile(self.z[j]),0,0])
-                    #print ' ',self.z[j],Uinlet
+                    #Uinlet = np.array([Uprofile(self.z[j]),0,0])
                     for i in range(self.NY):
-                        #f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]))
-                        f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]+Uinlet))
-                f.write(')\n')# }}}
+                        #f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]+Uinlet))
+                        f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]+self.Uinlet[j,:]))
+                f.write(')\n')
+
+            #
+            # write out T
+            #
+            fname = prefix + 'T'
+            sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
+            with open(fname,'w') as f:
+                f.write(datahdr.format(patchType='scalar',patchName=bcname,timeName=tname,avgValue='0'))
+                f.write('{:d}\n(\n'.format(self.NY*self.NZ))
+                for j in range(self.NZ):
+                    for i in range(self.NY):
+                        f.write('{s:f})\n'.format(s=self.Tinlet[j]))
+                f.write(')\n')
+    # }}}
 
     def writeVTK(self,fname,itime=None,output_time=None,stdout='verbose'):# {{{
         """ Write out binary VTK file with a single vector field.
         Can specify time index or output time.
         """
+        if not self.meanProfilesSet: self.setMeanProfiles()
+
         if output_time:
             itime = int(output_time / self.dt)
         if itime is None:
@@ -344,6 +418,10 @@ FoamFile
         u = np.zeros((1,self.NY,self.NZ)); u[0,:,:] = self.V[0,:,:,itime]
         v = np.zeros((1,self.NY,self.NZ)); v[0,:,:] = self.V[1,:,:,itime]
         w = np.zeros((1,self.NY,self.NZ)); w[0,:,:] = self.V[2,:,:,itime]
+        for iz in range(self.NZ):
+            u[0,:,iz] += self.Uinlet[iz,0]
+            v[0,:,iz] += self.Uinlet[iz,1]
+            w[0,:,iz] += self.Uinlet[iz,2]
         VTKwriter.vtk_write_structured_points( open(fname,'wb'), #binary mode
             1,self.NY,self.NZ,
             [u,v,w],
@@ -353,14 +431,20 @@ FoamFile
             origin=[0.,self.y[0],self.z[0]],
             indexorder='ijk')# }}}
 
-    def writeVTKSeries(self,prefix=None,step=1,stdout='verbose'):# {{{
+    def writeVTKSeries(self,outputdir='.',prefix=None,step=1,stdout='verbose'):# {{{
         """ Call writeVTK for a range of times
         """
         if not prefix: prefix = self.prefix
+        import os
+        if not os.path.isdir(outputdir):
+            print 'Creating output dir :',outputdir
+            os.makedirs(outputdir)
+
         for i in range(0,self.N,step):
-            fname = prefix + '_' + str(i) + '.vtk'
+            fname = outputdir + os.sep + prefix + '_' + str(i) + '.vtk'
             self.writeVTK(fname,itime=i,stdout=stdout)
-	if stdout=='overwrite': sys.stdout.write('\n')# }}}
+	if stdout=='overwrite': sys.stdout.write('\n')
+    # }}}
 
 #===============================================================================
 #===============================================================================
