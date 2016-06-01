@@ -260,6 +260,7 @@ class bts:
         print 'Creating',ntiles,'horizontal tiles'
         print '  before:',self.V.shape
         #self.V = np.tile(self.V,(1,ntiles,1,1)) #-- this repeats the ymax boundary
+        #self.NY *= ntiles
         if mirror:
             # [0 1 2] --> [0 1 2 1 0 1 2 .. ]
             NYnew = (self.NY-1)*ntiles + 1
@@ -282,10 +283,10 @@ class bts:
             self.V = np.concatenate((self.V,plane0),axis=1)
         print '  after :',self.V.shape
 
-        #self.NY *= ntiles
         self.NY = NYnew
         assert( self.V.shape == (3,self.NY,self.NZ,self.N) )
-        self.y = -0.5*(self.NY-1)*self.dy + np.arange(self.NY,dtype=self.realtype)*self.dy# }}}
+        self.y = np.arange(self.NY,dtype=self.realtype)*self.dy
+    # }}}
 
     def extendZ(self,zMin,zMax):# {{{
         """ Extend TurbSim domain to fit LES domain and update NZ
@@ -381,10 +382,10 @@ class bts:
             print 'Wrote scaling function to',output
     # }}}
 
-    def writeMappedBC(self,outputdir='boundaryData',
+    def writeMappedBC(self,outputdir='boundaryData',# {{{
             interval=1, Tstart=0., Tmax=None,
             xinlet=0.0, bcname='inlet',
-            writeU=True, writeT=True, writek=True):# {{{
+            writeU=True, writeT=True, writek=True):
         """ For use with OpenFOAM's timeVaryingMappedFixedValue boundary condition.
         This will create a points file and time directories in 'outputdir', which should be placed in constant/boundaryData/<patchname>.
         The output interval is in multiples of the TurbSim time step, with output up to time Tmax.
@@ -402,7 +403,13 @@ class bts:
             print 'Note: Mean TKE profile has not been set'
             self.setTkeProfile()
 
+        if writeU:
+            # for scaling fluctuations
+            up = np.zeros((3,1,self.NY,self.NZ))
+
+        #
         # write points file
+        #
         pointshdr = """/*--------------------------------*- C++ -*----------------------------------*\\
 | =========                 |                                                 |
 | \\\\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
@@ -429,7 +436,9 @@ FoamFile
                     f.write('({:f} {:f} {:f})\n'.format(xinlet,self.y[i],self.z[j]))
             f.write(')\n')
 
+        #
         # write time dirs
+        #
         datahdr = """/*--------------------------------*- C++ -*----------------------------------*\\
 | =========                 |                                                 |
 | \\\\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
@@ -448,8 +457,8 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 // Average
 {avgValue}\n\n"""
-        if Tmax is None: Tmax = Tstart + self.T
-        #Nsteps = int(Tmax / self.dt)
+        if Tmax is None: 
+            Tmax = Tstart + self.T
         istart = int(self.realtype(Tstart) / self.dt)
         iend = int(self.realtype(Tmax) / self.dt)
         print 'Outputting time length',(iend-istart)*self.dt
@@ -466,14 +475,19 @@ FoamFile
             if writeU:
                 fname = prefix + 'U'
                 sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
+                # scale fluctuations
+                up[0,0,:,:] = self.V[0,:,:,itime]
+                up[1,0,:,:] = self.V[1,:,:,itime]
+                up[2,0,:,:] = self.V[2,:,:,itime]
+                for iz in range(self.NZ):
+                    up[:,0,:,iz] *= self.scaling[iz]
                 with open(fname,'w') as f:
-                    #f.write(datahdr.format(patchName=bcname,timeName=tname))
                     f.write(datahdr.format(patchType='vector',patchName=bcname,timeName=tname,avgValue='(0 0 0)'))
                     f.write('{:d}\n(\n'.format(self.NY*self.NZ))
-                    for j in range(self.NZ):
-                        #Uinlet = np.array([Uprofile(self.z[j]),0,0])
-                        for i in range(self.NY):
-                            f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]+self.Uinlet[j,:]))
+                    for k in range(self.NZ):
+                        for j in range(self.NY):
+                            #f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,j,k,itime]+self.Uinlet[k,:]))
+                            f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.Uinlet[k,:]+up[:,0,j,k]))
                     f.write(')\n')
 
             #
@@ -519,7 +533,7 @@ FoamFile
 	if stdout=='overwrite':
             sys.stdout.write('\rWriting time step {:d} :  t= {:f}'.format(itime,self.t[itime]))
 	else: #if stdout=='verbose':
-            print 'Writing out time step',itime,': t=',self.t[itime]
+            print 'Writing out VTK for time step',itime,': t=',self.t[itime]
 
         # scale fluctuations
         up = np.zeros((1,self.NY,self.NZ)); up[0,:,:] = self.V[0,:,:,itime]
