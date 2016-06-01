@@ -20,7 +20,8 @@ extMapping['xy'] = 'xyz'
 def tname(tval):
     # note: paraview doesn't seem to handle floats well...
     #return '%d' % (tval*10)
-    return '%d' % (tval*1000)
+    #return '%d' % (tval*1000)
+    return '%d' % (tval)
 
 #-----------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------
