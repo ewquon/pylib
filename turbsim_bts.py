@@ -141,6 +141,8 @@ class turbsim_bts:
             print '  v min/max [',np.min(self.V[1,:,:,:]),np.max(self.V[1,:,:,:]),']'
             print '  w min/max [',np.min(self.V[2,:,:,:]),np.max(self.V[2,:,:,:]),']'
 
+            self.scaling = np.ones(self.NZ)
+
             #
             # calculate coordinates
             #
@@ -313,8 +315,9 @@ class turbsim_bts:
         self.NZ = newNZ
         print '  after:',self.V.shape
 
-        print 'Updating z coordinates'
+        print 'Updating z coordinates and resetting scaling function'
         self.z = zMin + np.arange(self.NZ,dtype=self.realtype)*self.dz
+        self.scaling = np.ones(self.NZ)
 
     # }}}
 
@@ -334,6 +337,30 @@ class turbsim_bts:
             print self.z[iz],U,self.Tinlet[iz]
 
         self.meanProfilesSet = True
+    # }}}
+
+    def setScaling(self,tanh_z90,tanh_z50,max_scaling=1.0,output=''):# {{{
+        """ Set scaling of fluctuations with height
+        Scaling function ranges from 0 to max_scaling. The heights at which the fluctuation magnitudes are decreased by 90% and 50% (tanh_z90 and tanh_z50, respectively) are specified to scale the hyperbolic tangent function; tanh_z90 should be set to approximately the inversion height:
+          f = max_scaling * 0.5( tanh( k(z-z_50) ) + 1 )
+        where
+          k = arctanh(0.8) / (z_90-z_50)
+        Note: If extendZ is used, that should be called to update the z coordinates prior to using this routine.
+        """
+        k = np.arctanh(0.8) / (tanh_z90-tanh_z50)
+        self.scaling = max_scaling * 0.5*(np.tanh(-k*(self.z-tanh_z50)) + 1.0)
+        fmin = np.min(self.scaling)
+        fmax = np.max(self.scaling)
+        assert( fmin >= 0. and fmax <= max_scaling )
+        print 'Updated fluctuation scaling: range is',fmin,fmax
+        
+        if output:
+            with open(output,'w') as f:
+                f.write('# tanh scaling parameters: z_90={:f}, z_50={:f}, max_scaling={:f}\n'.format(tanh_z90,tanh_z50,max_scaling))
+                f.write('# z  f(z)\n')
+                for iz,z in enumerate(self.z):
+                    f.write(' {:f} {:g}\n'.format(z,self.scaling[iz]))
+            print 'Wrote scaling function to',output
     # }}}
 
     #def writeMappedBC(self,outputdir,Uprofile=lambda z:0.0,interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):
@@ -450,27 +477,38 @@ FoamFile
             sys.stdout.write('\rWriting time step {:d} :  t= {:f}'.format(itime,self.t[itime]))
 	else: #if stdout=='verbose':
             print 'Writing out time step',itime,': t=',self.t[itime]
+
+        # scale fluctuations
         up = np.zeros((1,self.NY,self.NZ)); up[0,:,:] = self.V[0,:,:,itime]
         vp = np.zeros((1,self.NY,self.NZ)); vp[0,:,:] = self.V[1,:,:,itime]
         wp = np.zeros((1,self.NY,self.NZ)); wp[0,:,:] = self.V[2,:,:,itime]
-        u = up.copy()
-        v = vp.copy()
-        w = wp.copy()
         for iz in range(self.NZ):
-            u[0,:,iz] += self.Uinlet[iz,0]
-            v[0,:,iz] += self.Uinlet[iz,1]
-            w[0,:,iz] += self.Uinlet[iz,2]
+            up[0,:,iz] *= self.scaling[iz]
+            vp[0,:,iz] *= self.scaling[iz]
+            wp[0,:,iz] *= self.scaling[iz]
+
+        # calculate instantaneous velocity
+        U = up.copy()
+        V = vp.copy()
+        W = wp.copy()
+        for iz in range(self.NZ):
+            U[0,:,iz] += self.Uinlet[iz,0]
+            V[0,:,iz] += self.Uinlet[iz,1]
+            W[0,:,iz] += self.Uinlet[iz,2]
+
+        # write out VTK
         VTKwriter.vtk_write_structured_points( open(fname,'wb'), #binary mode
             1,self.NY,self.NZ,
-            [ u,v,w, up,vp,wp ],
+            [ U,V,W, up,vp,wp ],
             datatype=['vector','vector'],
             dx=1.0,dy=self.dy,dz=self.dz,
             dataname=['U','u\''], #['fluctuations'], #dataname=['TurbSim_velocity'],
             origin=[0.,self.y[0],self.z[0]],
-            indexorder='ijk')# }}}
+            indexorder='ijk')
+        # }}}
 
     def writeVTKSeries(self,outputdir='.',prefix=None,step=1,stdout='verbose'):# {{{
-        """ Call writeVTK for a range of times
+        """ Driver for writeVTK to output a range of times
         """
         if not prefix: prefix = self.prefix
         import os
