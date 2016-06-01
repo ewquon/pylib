@@ -30,6 +30,8 @@ class turbsim_bts:
         self.meanProfilesSet = False
         self.meanProfilesRead = False
 
+        self.tkeProfileSet = False
+
         self._readBTS(prefix,verbose=verbose)
 
     #@profile
@@ -339,6 +341,22 @@ class turbsim_bts:
         self.meanProfilesSet = True
     # }}}
 
+    def setTkeProfile(self,kprofile=lambda z:0.0):# {{{
+        """ Sets the mean TKE profiles (affects output from writeMappedBC)
+        Called by readHubTkeProfile.
+        Can also be directly called with a user-specified analytical profile.
+        """
+        self.kinlet = np.zeros(self.NZ)
+        for iz,z in enumerate(self.z):
+            self.kinlet[iz]   = kprofile(z)
+
+        #print 'Set TKE profile:  z  k'
+        #for iz,k in enumerate(self.kinlet):
+        #    print self.z[iz],k
+
+        self.tkeProfileSet = True
+    # }}}
+
     def setScaling(self,tanh_z90,tanh_z50,max_scaling=1.0,output=''):# {{{
         """ Set scaling of fluctuations with height
         Scaling function ranges from 0 to max_scaling. The heights at which the fluctuation magnitudes are decreased by 90% and 50% (tanh_z90 and tanh_z50, respectively) are specified to scale the hyperbolic tangent function; tanh_z90 should be set to approximately the inversion height:
@@ -363,10 +381,14 @@ class turbsim_bts:
             print 'Wrote scaling function to',output
     # }}}
 
-    #def writeMappedBC(self,outputdir,Uprofile=lambda z:0.0,interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):
-    def writeMappedBC(self,outputdir='boundaryData',interval=1,xinlet=0.0,Tmax=None,bcname='inlet'):# {{{
+    def writeMappedBC(self,outputdir='boundaryData',
+            interval=1, Tstart=0., Tmax=None,
+            xinlet=0.0, bcname='inlet',
+            writeU=True, writeT=True, writek=True):# {{{
         """ For use with OpenFOAM's timeVaryingMappedFixedValue boundary condition.
         This will create a points file and time directories in 'outputdir', which should be placed in constant/boundaryData/<patchname>.
+        The output interval is in multiples of the TurbSim time step, with output up to time Tmax.
+        The inlet location and bcname should correspond to the LES inflow plane. 
         """
         import os
         if not os.path.isdir(outputdir):
@@ -376,6 +398,9 @@ class turbsim_bts:
         if not self.meanProfilesSet:
             print 'Note: Mean profiles have not been set or read from files'
             self.setMeanProfiles()
+        if writek and not self.meanProfilesSet:
+            print 'Note: Mean TKE profile has not been set'
+            self.setTkeProfile()
 
         # write points file
         pointshdr = """/*--------------------------------*- C++ -*----------------------------------*\\
@@ -423,10 +448,13 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 // Average
 {avgValue}\n\n"""
-        if Tmax is None: Tmax = self.T
-        Nsteps = int(Tmax / self.dt)
-        for i in range(0,Nsteps,interval):
-            itime = np.mod(i,self.N)
+        if Tmax is None: Tmax = Tstart + self.T
+        #Nsteps = int(Tmax / self.dt)
+        istart = int(self.realtype(Tstart) / self.dt)
+        iend = int(self.realtype(Tmax) / self.dt)
+        print 'Outputting time length',(iend-istart)*self.dt
+        for i in range(istart,iend,interval):
+            itime = np.mod(i-istart,self.N)
             tname = '{:f}'.format(self.realtype(i*self.dt)).rstrip('0').rstrip('.')
             try: os.mkdir(outputdir+os.sep+tname)
             except: pass
@@ -435,31 +463,46 @@ FoamFile
             #
             # write out U
             #
-            fname = prefix + 'U'
-            sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
-            with open(fname,'w') as f:
-                #f.write(datahdr.format(patchName=bcname,timeName=tname))
-                f.write(datahdr.format(patchType='vector',patchName=bcname,timeName=tname,avgValue='(0 0 0)'))
-                f.write('{:d}\n(\n'.format(self.NY*self.NZ))
-                for j in range(self.NZ):
-                    #Uinlet = np.array([Uprofile(self.z[j]),0,0])
-                    for i in range(self.NY):
-                        #f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]+Uinlet))
-                        f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]+self.Uinlet[j,:]))
-                f.write(')\n')
+            if writeU:
+                fname = prefix + 'U'
+                sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
+                with open(fname,'w') as f:
+                    #f.write(datahdr.format(patchName=bcname,timeName=tname))
+                    f.write(datahdr.format(patchType='vector',patchName=bcname,timeName=tname,avgValue='(0 0 0)'))
+                    f.write('{:d}\n(\n'.format(self.NY*self.NZ))
+                    for j in range(self.NZ):
+                        #Uinlet = np.array([Uprofile(self.z[j]),0,0])
+                        for i in range(self.NY):
+                            f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,i,j,itime]+self.Uinlet[j,:]))
+                    f.write(')\n')
 
             #
             # write out T
             #
-            fname = prefix + 'T'
-            sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
-            with open(fname,'w') as f:
-                f.write(datahdr.format(patchType='scalar',patchName=bcname,timeName=tname,avgValue='0'))
-                f.write('{:d}\n(\n'.format(self.NY*self.NZ))
-                for j in range(self.NZ):
-                    for i in range(self.NY):
-                        f.write('{s:f})\n'.format(s=self.Tinlet[j]))
-                f.write(')\n')
+            if writeT:
+                fname = prefix + 'T'
+                sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
+                with open(fname,'w') as f:
+                    f.write(datahdr.format(patchType='scalar',patchName=bcname,timeName=tname,avgValue='0'))
+                    f.write('{:d}\n(\n'.format(self.NY*self.NZ))
+                    for j in range(self.NZ):
+                        for i in range(self.NY):
+                            f.write('{s:f}\n'.format(s=self.Tinlet[j]))
+                    f.write(')\n')
+
+            #
+            # write out k
+            #
+            if writek:
+                fname = prefix + 'k'
+                sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
+                with open(fname,'w') as f:
+                    f.write(datahdr.format(patchType='scalar',patchName=bcname,timeName=tname,avgValue='0'))
+                    f.write('{:d}\n(\n'.format(self.NY*self.NZ))
+                    for j in range(self.NZ):
+                        for i in range(self.NY):
+                            f.write('{s:f}\n'.format(s=self.kinlet[j]))
+                    f.write(')\n')
     # }}}
 
     def writeVTK(self,fname,itime=None,output_time=None,stdout='verbose'):# {{{
