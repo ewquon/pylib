@@ -15,7 +15,7 @@ import time
 #   mprof run turbsim_bts.py
 #   mprof plot
 
-class turbsim_bts:
+class bts:
     realtype = np.float32
 
     def __init__(self,prefix,Umean=None,verbose=False):
