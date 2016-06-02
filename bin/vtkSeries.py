@@ -72,5 +72,7 @@ for sample in sampleNames:
                 #dest = sample + os.sep + '%s_%g.%s'%(var,timesteps[i],extNew)
                 dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[i]),extNew)
             print dest,'-->',src
-            os.symlink(src,dest)
+            try:
+                os.symlink(src,dest)
+            except OSError: pass
 
