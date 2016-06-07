@@ -11,9 +11,9 @@ class focused_wave:
     #
     x_wec = 0.0 # device location
     x_inlet = -600.0 # (near) inlet
-    dt = .020559253175191756
+    dt = 0.02
     surfDir = 'waterSurface'
-    MLERinput = 'truncated.txt'
+    MLERinput = 'coeffs.txt'
     toffset = 150.0 # time after which the focused wave reaches x_wec
 
     Nx = 501
@@ -290,24 +290,25 @@ class focused_wave:
         self.w  = np.array(w)
         self.dw = w[1] - w[0] #dw = np.diff(w)
         self.S  = np.array(S)
-        self.A  = np.array(S)**0.5
-        #self.p  = np.array(p)
-        self.p  = -np.array(p) # updated 2/10/16 after coeff output was changed
+        self.A  = np.array(2*self.S*self.dw)**0.5 # updated 6/7/16 after spectral amplitude was corrected in final version
+        self.p  = -np.array(p) # updated 2/10/16 after *coeffs*.txt output was changed
         self.k  = np.array(k)
 
         self.z_ref  = np.zeros((self.Ntimes))
         self.z0_ref = np.zeros((self.Ntimes))
         t = self.times - self.toffset
         for i in range(self.Ntimes):
-            self.z_ref[i]  = np.sum( self.A*np.cos( self.k*self.x_wec   - self.w*t[i] + self.p ) )*self.dw
-            self.z0_ref[i] = np.sum( self.A*np.cos( self.k*self.x_inlet - self.w*t[i] + self.p ) )*self.dw
+            # updated 6/7/16 after spectral amplitude was corrected in final version
+            self.z_ref[i]  = np.sum( self.A*np.cos( self.k*self.x_wec   - self.w*t[i] + self.p ) )#*self.dw
+            self.z0_ref[i] = np.sum( self.A*np.cos( self.k*self.x_inlet - self.w*t[i] + self.p ) )#*self.dw
 
         print 'Calculating wave profile',self.ipeak,'at t =',self.tpeak,'~= tpeak'
         self.xpeak_ref  = np.linspace(-600,600,self.Nx)
         xref = self.xpeak_ref - self.x_wec
         self.zpeak_ref  = np.zeros((self.Nx))
         for i in range(self.Nx):
-            self.zpeak_ref[i] = np.sum( self.A*np.cos( self.k*xref[i] - self.w*t[self.ipeak] + self.p ) )*self.dw
+            # updated 6/7/16 after spectral amplitude was corrected in final version
+            self.zpeak_ref[i] = np.sum( self.A*np.cos( self.k*xref[i] - self.w*t[self.ipeak] + self.p ) )#*self.dw
 
         # numerically evaluate the derivative
 ##        dx = self.xpeak_ref[1:] - self.xpeak_ref[:-1]
