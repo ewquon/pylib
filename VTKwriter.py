@@ -139,32 +139,54 @@ def vtk_write_structured_points(f,nx,ny,nz, # {{{
 
         if outputtype=='vector':
             f.write('{:s}S {:s} {:s}\n'.format(outputtype.upper(),name,vtk_datatype))
-            if indexorder=='jik': # TTUDD indexing convention:
-                if binary:
-                    for k in range(nz):
-                        for j in range(ny):
-                            for i in range(nx):
-                                #f.write(struct.pack('fff',u[j,i,k],v[j,i,k],w[j,i,k])) # native endianness
-                                f.write(struct.pack('>fff',u[j,i,k],v[j,i,k],w[j,i,k])) # big endian
-                else: #ascii
-                    for k in range(nz):
-                        for j in range(ny):
-                            for i in range(nx):
-                                #f.write(' {:f} {:f} {:f}\n'.format(u[i,j,k],v[i,j,k],w[i,j,k]))
-                                f.write(' {:f} {:f} {:f}\n'.format(u[j,i,k],v[j,i,k],w[j,i,k]))
-            else: # assume index order is i,j,k
-                if binary:
-                    for k in range(nz):
-                        for j in range(ny):
-                            for i in range(nx):
-                                #f.write(struct.pack('fff',u[i,j,k],v[i,j,k],w[i,j,k])) # native endianness
-                                f.write(struct.pack('>fff',u[i,j,k],v[i,j,k],w[i,j,k])) # big endian
-                else: #ascii
-                    for k in range(nz):
-                        for j in range(ny):
-                            for i in range(nx):
-                                #f.write(' {:f} {:f} {:f}\n'.format(u[i,j,k],v[i,j,k],w[i,j,k]))
-                                f.write(' {:f} {:f} {:f}\n'.format(u[i,j,k],v[i,j,k],w[i,j,k]))
+#            if indexorder=='jik': # TTUDD indexing convention:
+#                if binary:
+#                    for k in range(nz):
+#                        for j in range(ny):
+#                            for i in range(nx):
+#                                #f.write(struct.pack('fff',u[j,i,k],v[j,i,k],w[j,i,k])) # native endianness
+#                                f.write(struct.pack('>fff',u[j,i,k],v[j,i,k],w[j,i,k])) # big endian
+#                else: #ascii
+#                    for k in range(nz):
+#                        for j in range(ny):
+#                            for i in range(nx):
+#                                #f.write(' {:f} {:f} {:f}\n'.format(u[i,j,k],v[i,j,k],w[i,j,k]))
+#                                f.write(' {:f} {:f} {:f}\n'.format(u[j,i,k],v[j,i,k],w[j,i,k]))
+#            else: # assume index order is i,j,k
+#                if binary:
+#                    for k in range(nz):
+#                        for j in range(ny):
+#                            for i in range(nx):
+#                                #f.write(struct.pack('fff',u[i,j,k],v[i,j,k],w[i,j,k])) # native endianness
+#                                f.write(struct.pack('>fff',u[i,j,k],v[i,j,k],w[i,j,k])) # big endian
+#                else: #ascii
+#                    for k in range(nz):
+#                        for j in range(ny):
+#                            for i in range(nx):
+#                                #f.write(' {:f} {:f} {:f}\n'.format(u[i,j,k],v[i,j,k],w[i,j,k]))
+#                                f.write(' {:f} {:f} {:f}\n'.format(u[i,j,k],v[i,j,k],w[i,j,k]))
+            mapping = { 'i':0, 'j':1, 'k':2 }
+            iorder = [ mapping[ijk] for ijk in indexorder ]
+            print 'index order (',indexorder,') :',iorder
+            if binary:
+                for k in range(nz):
+                    for j in range(ny):
+                        for i in range(nx):
+                            ijk = [i,j,k]
+                            #f.write(struct.pack('fff',u[i,j,k],v[i,j,k],w[i,j,k])) # native endianness
+                            #f.write(struct.pack('>fff',u[i,j,k],v[i,j,k],w[i,j,k])) # big endian
+                            f.write(struct.pack('>fff',u[ijk[iorder[0]],ijk[iorder[1]],ijk[iorder[2]]],
+                                                       v[ijk[iorder[0]],ijk[iorder[1]],ijk[iorder[2]]],
+                                                       w[ijk[iorder[0]],ijk[iorder[1]],ijk[iorder[2]]])) # big endian
+            else: #ascii
+                for k in range(nz):
+                    for j in range(ny):
+                        for i in range(nx):
+                            ijk = [i,j,k]
+                            #f.write(' {:f} {:f} {:f}\n'.format(u[i,j,k],v[i,j,k],w[i,j,k]))
+                            f.write(' {:f} {:f} {:f}\n'.format(u[ijk[iorder[0]],ijk[iorder[1]],ijk[iorder[2]]],
+                                                               v[ijk[iorder[0]],ijk[iorder[1]],ijk[iorder[2]]],
+                                                               w[ijk[iorder[0]],ijk[iorder[1]],ijk[iorder[2]]]))
 
         elif outputtype=='scalar':
             f.write('{:s}S {:s} {:s}\n'.format(outputtype.upper(),name,vtk_datatype))
