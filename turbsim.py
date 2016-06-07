@@ -324,7 +324,7 @@ class bts:
 
     # }}}
 
-    def setMeanProfiles(self,Uprofile=lambda z:[0.0,0.0,0.0],Tprofile=lambda z:0.0):# {{{
+    def setMeanProfiles(self,Uprofile=lambda z:[0.0,0.0,0.0],Tprofile=lambda z:0.0,verbose=False):# {{{
         """ Sets the mean velocity and temperature profiles (affects output from writeMappedBC and writeVTK)
         Called by readMeanProfile after reading in post-processed planar averages.
         Can also be directly called with a user-specified analytical profile.
@@ -335,9 +335,10 @@ class bts:
             self.Uinlet[iz,:] = Uprofile(z)
             self.Tinlet[iz]   = Tprofile(z)
 
-        print 'Set mean profile:  z  U  T'
-        for iz,U in enumerate(self.Uinlet):
-            print self.z[iz],U,self.Tinlet[iz]
+        if verbose:
+            print 'Set mean profile:  z  U  T'
+            for iz,U in enumerate(self.Uinlet):
+                print self.z[iz],U,self.Tinlet[iz]
 
         self.meanProfilesSet = True
     # }}}
@@ -555,10 +556,10 @@ FoamFile
 
         # write out VTK
         VTKwriter.vtk_write_structured_points( open(fname,'wb'), #binary mode
-            1,self.NY,self.NZ,
+            1, self.NY, self.NZ,
             [ U,V,W, up,vp,wp ],
             datatype=['vector','vector'],
-            dx=1.0,dy=self.dy,dz=self.dz,
+            dx=1.0, dy=self.dy, dz=self.dz,
             dataname=['U','u\''], #['fluctuations'], #dataname=['TurbSim_velocity'],
             origin=[0.,self.y[0],self.z[0]],
             indexorder='ijk')
@@ -577,6 +578,41 @@ FoamFile
             fname = outputdir + os.sep + prefix + '_' + str(i) + '.vtk'
             self.writeVTK(fname,itime=i,stdout=stdout)
 	if stdout=='overwrite': sys.stdout.write('\n')
+    # }}}
+
+    def writeVTKSeriesAsBlock(self,outputdir='.',prefix=None,Umean=None,step=1):# {{{
+        """ Write out a 3D block wherein the x-coordinate is time
+        """
+        if not prefix: prefix = self.prefix
+        import os
+        if not os.path.isdir(outputdir):
+            print 'Creating output dir :',outputdir
+            os.makedirs(outputdir)
+
+        if Umean is None: Umean = self.Umean
+
+        # scale fluctuations
+        Nt = self.N / step
+        up = np.zeros((self.NY,self.NZ,Nt)); up[:,:,:] = self.V[0,:,:,:Nt*step:step]
+        vp = np.zeros((self.NY,self.NZ,Nt)); vp[:,:,:] = self.V[1,:,:,:Nt*step:step]
+        wp = np.zeros((self.NY,self.NZ,Nt)); wp[:,:,:] = self.V[2,:,:,:Nt*step:step]
+        for iz in range(self.NZ):
+            up[:,iz,:] *= self.scaling[iz]
+            vp[:,iz,:] *= self.scaling[iz]
+            wp[:,iz,:] *= self.scaling[iz]
+
+        # write out VTK
+        import os
+        fname = outputdir + os.sep + prefix + '_block.vtk'
+        VTKwriter.vtk_write_structured_points( open(fname,'wb'), #binary mode
+            Nt, self.NY, self.NZ,
+            [ up,vp,wp ],
+            datatype=['vector'],
+            dx=step*Umean*self.dt, dy=self.dy, dz=self.dz,
+            dataname=['u\''], #['fluctuations'], #dataname=['TurbSim_velocity'],
+            origin=[0.,self.y[0],self.z[0]],
+            indexorder='jki')
+        print 'Wrote',fname
     # }}}
 
 #===============================================================================
