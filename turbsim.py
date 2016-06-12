@@ -3,7 +3,7 @@
 # TurbSim data processing module (binary AeroDyn .bts format)
 # written by Eliot Quon (eliot.quon@nrel.gov)
 #
-import sys
+import sys,os
 import numpy as np
 import VTKwriter
 from binario import *
@@ -25,10 +25,10 @@ class bts:
         self.prefix = prefix
         self.Umean = Umean
         self.hub = dict() #hub-height wind speeds
-        self.field = dict() #full NY x NZ field
 
         self.meanProfilesSet = False
         self.meanProfilesRead = False
+        self.variancesRead = False
 
         self.tkeProfileSet = False
 
@@ -36,7 +36,8 @@ class bts:
 
     #@profile
     def _readBTS(self,prefix,verbose=False):# {{{
-        """ Process AeroDyn full-field files
+        """ Process AeroDyn full-field files. Fluctuating velocities and coordinates (y & z) are calculated.
+        V.shape = (3,NY,NZ,N)  # N: number of time steps
         """
         fname = prefix + '.bts'
         with binaryfile(fname) as f:
@@ -143,7 +144,7 @@ class bts:
             print '  v min/max [',np.min(self.V[1,:,:,:]),np.max(self.V[1,:,:,:]),']'
             print '  w min/max [',np.min(self.V[2,:,:,:]),np.max(self.V[2,:,:,:]),']'
 
-            self.scaling = np.ones(self.NZ)
+            self.scaling = np.ones((3,self.NZ))
 
             #
             # calculate coordinates
@@ -161,8 +162,8 @@ class bts:
     #--end of self._readBTS()# }}}
 
     def readMeanProfile(self,Ufile='U.dat',Vfile='V.dat',Tfile='T.dat'):# {{{
-        """ Read planar averages (postprocessed separately) into arrays for interpolating
-        Assumed that the heights in all files are the same
+        """ Read planar averages (postprocessed separately) into arrays for interpolating, assuming that the heights in all files are the same. 
+        Sets Ufn, Vfn, and Tfn that can be called for arbitrary height.
         """
         hmean,Umean,Vmean,Tmean = [], [], [], []
         with open(Ufile,'r') as f:
@@ -177,6 +178,7 @@ class bts:
             for line in f:
                 Tmean.append( float(line.split()[1]) )
         assert( len(hmean)==len(Umean) and len(Umean)==len(Vmean) and len(Vmean)==len(Tmean) )
+        self.hmean = np.array(hmean)
 
         from scipy import interpolate
         self.Ufn = interpolate.interp1d(hmean,Umean,kind='linear',fill_value='extrapolate')
@@ -185,6 +187,32 @@ class bts:
         self.meanProfilesRead = True
 
         self.setMeanProfiles( Uprofile=lambda z: [self.Ufn(z),self.Vfn(z),0.0], Tprofile=lambda z: self.Tfn(z) )
+    # }}}
+
+    def readVarianceProfile(self,uufile='uu.dat',vvfile='vv.dat',wwfile='ww.dat'):# {{{
+        """ Read planar averages (postprocessed separately) into arrays for interpolating, assuming that the heights in all files are the same. 
+        Sets uuprofile, vvprofile, and wwprofile from input files.
+        """
+        hmean,uumean,vvmean,wwmean = [], [], [], []
+        with open(uufile,'r') as f:
+            for line in f:
+                line = line.split()
+                hmean.append( float(line[0]) )
+                uumean.append( float(line[1]) )
+        with open(vvfile,'r') as f:
+            for line in f:
+                vvmean.append( float(line.split()[1]) )
+        with open(wwfile,'r') as f:
+            for line in f:
+                wwmean.append( float(line.split()[1]) )
+        assert( len(hmean)==len(uumean) and len(uumean)==len(vvmean) and len(vvmean)==len(wwmean) )
+        if self.meanProfilesRead: assert( np.all(np.array(hmean) == self.hmean) )
+
+        self.uu_profile = np.array( uumean )
+        self.vv_profile = np.array( vvmean )
+        self.ww_profile = np.array( wwmean )
+
+        self.variancesRead = True
     # }}}
 
     def checkDivergence(self):# {{{
@@ -249,6 +277,54 @@ class bts:
                 dS*(np.sum(Uin) - np.sum(Uout)) + \
                 dSy*(np.sum(Vin) - np.sum(Vout)) + \
                 dSz*(np.sum(Win) - np.sum(Wout))# }}}
+
+    def calculateRMS(self,output=''):# {{{
+        """ Calculate root-mean square or standard deviation of the fluctuating velocities.
+        Output is the square root of the ensemble average of the fluctuations, i.e. the root-mean-square or standard deviation, which should match the output in in PREFIX.sum.
+        """
+        self.uu = self.V[0,:,:,:]**2
+        self.vv = self.V[1,:,:,:]**2
+        self.ww = self.V[2,:,:,:]**2
+        self.uu_tavg = np.mean(self.uu,2) # time averages
+        self.vv_tavg = np.mean(self.vv,2)
+        self.ww_tavg = np.mean(self.ww,2)
+        self.uu_mean = np.mean( self.uu_tavg ) # space/time (ensemble) average
+        self.vv_mean = np.mean( self.vv_tavg )
+        self.ww_mean = np.mean( self.ww_tavg )
+
+        print 'Spatial average of <u\'u\'>, <v\'v\'>, <w\'w\'> :',self.uu_mean,self.vv_mean,self.ww_mean
+
+        if not output=='':
+            with open(output,'w') as f:
+                f.write('   Height   Standard deviation at grid points for the u component:\n')
+                for i,zi in enumerate(self.z):
+                        f.write('z= {:.1f} : {}\n'.format(zi,np.sqrt(self.uu_tavg[:,i])))
+                f.write('   Height   Standard deviation at grid points for the v component:\n')
+                for i,zi in enumerate(self.z):
+                        f.write('z= {:.1f} : {}\n'.format(zi,np.sqrt(self.vv_tavg[:,i])))
+                f.write('   Height   Standard deviation at grid points for the w component:\n')
+                for i,zi in enumerate(self.z):
+                        f.write('z= {:.1f} : {}\n'.format(zi,np.sqrt(self.ww_tavg[:,i])))
+            print 'Wrote out',output
+# }}}
+
+    def checkVariance(self,upto=None):# {{{
+        if upto is None: upto = self.z[-1]
+        elif upto > self.z[-1]:
+            print upto,'> zmax =',self.z[-1]
+            upto = self.z[-1]
+        kmax = int(upto / self.dz)
+
+        print 'full-field variances up to z={:.1f} (k={:d}): {}'.format( upto, kmax, 
+                [ np.mean(self.V[i,:,:kmax,:]**2) for i in range(3) ] )
+        uu = self.V[0,:,:kmax,:]**2
+        vv = self.V[1,:,:kmax,:]**2
+        ww = self.V[2,:,:kmax,:]**2
+        for iz in range(kmax): uu[:,iz,:] *= self.scaling[0,iz]**2
+        for iz in range(kmax): vv[:,iz,:] *= self.scaling[1,iz]**2
+        for iz in range(kmax): ww[:,iz,:] *= self.scaling[2,iz]**2
+        print 'scaled full-field variances :',[ np.mean(uu), np.mean(vv), np.mean(ww) ]
+    # }}}
 
     #@profile
     def tileY(self,ntiles,mirror=False):# {{{
@@ -320,7 +396,7 @@ class bts:
 
         print 'Updating z coordinates and resetting scaling function'
         self.z = zMin + np.arange(self.NZ,dtype=self.realtype)*self.dz
-        self.scaling = np.ones(self.NZ)
+        self.scaling = np.ones((3,self.NZ))
 
     # }}}
 
@@ -367,19 +443,25 @@ class bts:
           k = arctanh(0.8) / (z_90-z_50)
         Note: If extendZ is used, that should be called to update the z coordinates prior to using this routine.
         """
+        if isinstance(max_scaling,list) or isinstance(max_scaling,np.ndarray):
+            assert( len(max_scaling) == 3 )
+        else:
+            max_scaling = [max_scaling,max_scaling,max_scaling]
+
         k = np.arctanh(0.8) / (tanh_z90-tanh_z50)
-        self.scaling = max_scaling * 0.5*(np.tanh(-k*(self.z-tanh_z50)) + 1.0)
-        fmin = np.min(self.scaling)
-        fmax = np.max(self.scaling)
-        assert( fmin >= 0. and fmax <= max_scaling )
-        print 'Updated fluctuation scaling: range is',fmin,fmax
+        for i in range(3):
+            self.scaling[i,:] = max_scaling[i] * 0.5*(np.tanh(-k*(self.z-tanh_z50)) + 1.0)
+            fmin = np.min(self.scaling[i,:])
+            fmax = np.max(self.scaling[i,:])
+            assert( fmin >= 0. and fmax <= max_scaling[i] )
+            print 'Updated scaling range (dir={}) : {} {}'.format(i,fmin,fmax)
         
         if output:
             with open(output,'w') as f:
-                f.write('# tanh scaling parameters: z_90={:f}, z_50={:f}, max_scaling={:f}\n'.format(tanh_z90,tanh_z50,max_scaling))
-                f.write('# z  f(z)\n')
+                f.write('# tanh scaling parameters: z_90={:f}, z_50={:f}, max_scaling={}\n'.format(tanh_z90,tanh_z50,max_scaling))
+                f.write('# z  f_u(z)  f_v(z)  f_w(z)\n')
                 for iz,z in enumerate(self.z):
-                    f.write(' {:f} {:g}\n'.format(z,self.scaling[iz]))
+                    f.write(' {:f} {f[0]:g} {f[1]:g} {f[2]:g}\n'.format(z,f=self.scaling[:,iz]))
             print 'Wrote scaling function to',output
     # }}}
 
@@ -481,7 +563,8 @@ FoamFile
                 up[1,0,:,:] = self.V[1,:,:,itime]
                 up[2,0,:,:] = self.V[2,:,:,itime]
                 for iz in range(self.NZ):
-                    up[:,0,:,iz] *= self.scaling[iz]
+                    for i in range(3):
+                        up[i,0,:,iz] *= self.scaling[i,iz]
                 with open(fname,'w') as f:
                     f.write(datahdr.format(patchType='vector',patchName=bcname,timeName=tname,avgValue='(0 0 0)'))
                     f.write('{:d}\n(\n'.format(self.NY*self.NZ))
@@ -541,9 +624,9 @@ FoamFile
         vp = np.zeros((1,self.NY,self.NZ)); vp[0,:,:] = self.V[1,:,:,itime]
         wp = np.zeros((1,self.NY,self.NZ)); wp[0,:,:] = self.V[2,:,:,itime]
         for iz in range(self.NZ):
-            up[0,:,iz] *= self.scaling[iz]
-            vp[0,:,iz] *= self.scaling[iz]
-            wp[0,:,iz] *= self.scaling[iz]
+            up[0,:,iz] *= self.scaling[0,iz]
+            vp[0,:,iz] *= self.scaling[1,iz]
+            wp[0,:,iz] *= self.scaling[2,iz]
 
         # calculate instantaneous velocity
         U = up.copy()
@@ -568,8 +651,7 @@ FoamFile
     def writeVTKSeries(self,outputdir='.',prefix=None,step=1,stdout='verbose'):# {{{
         """ Driver for writeVTK to output a range of times
         """
-        if not prefix: prefix = self.prefix
-        import os
+        if not prefix: prefix = self.prefix.split(os.sep)[-1]
         if not os.path.isdir(outputdir):
             print 'Creating output dir :',outputdir
             os.makedirs(outputdir)
@@ -597,9 +679,9 @@ FoamFile
         vp = np.zeros((self.NY,self.NZ,Nt)); vp[:,:,:] = self.V[1,:,:,:Nt*step:step]
         wp = np.zeros((self.NY,self.NZ,Nt)); wp[:,:,:] = self.V[2,:,:,:Nt*step:step]
         for iz in range(self.NZ):
-            up[:,iz,:] *= self.scaling[iz]
-            vp[:,iz,:] *= self.scaling[iz]
-            wp[:,iz,:] *= self.scaling[iz]
+            up[:,iz,:] *= self.scaling[0,iz]
+            vp[:,iz,:] *= self.scaling[1,iz]
+            wp[:,iz,:] *= self.scaling[2,iz]
 
         # write out VTK
         import os

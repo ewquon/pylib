@@ -167,7 +167,7 @@ def vtk_write_structured_points(f,nx,ny,nz, # {{{
 #                                f.write(' {:f} {:f} {:f}\n'.format(u[i,j,k],v[i,j,k],w[i,j,k]))
             mapping = { 'i':0, 'j':1, 'k':2 }
             iorder = [ mapping[ijk] for ijk in indexorder ]
-            print 'index order (',indexorder,') :',iorder
+            #print 'index order (',indexorder,') :',iorder
             if binary:
                 for k in range(nz):
                     for j in range(ny):
