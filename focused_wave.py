@@ -18,6 +18,9 @@ class focused_wave:
 
     Nx = 501
 
+    histPlotRef = False
+    peakPlotRef = False
+
     #
     # initialization
     #
@@ -27,7 +30,8 @@ class focused_wave:
             dt=dt,
             toffset=toffset,
             x_wec=x_wec,
-            x_inlet=x_inlet):
+            x_inlet=x_inlet,
+            calc_deriv=True):
 
         # inputs
         self.surfDir    = surfDir
@@ -36,6 +40,8 @@ class focused_wave:
         self.toffset    = toffset
         self.x_wec      = x_wec
         self.x_inlet    = x_inlet
+
+        self.calc_deriv = calc_deriv
 
         # outputs
         self.csvfiles = []
@@ -170,7 +176,7 @@ class focused_wave:
 
         try:
             tread = np.zeros((self.Ntimes))
-            with open('trace.dat','r') as f:
+            with open(self.surfDir+os.sep+'trace.dat','r') as f:
                 print 'Attempting read of existing trace.dat'
                 i = 0
                 f.readline() #header
@@ -180,7 +186,7 @@ class focused_wave:
                     self.z_sim[i] = vals[1]
                     self.z0_sim[i] = vals[2]
                     i += 1
-            with open('peak.dat','r') as f:
+            with open(self.surfDir+os.sep+'peak.dat','r') as f:
                 print 'Attempting read of existing peak.dat'
                 f.readline() #header
                 x,z = [],[]
@@ -220,13 +226,13 @@ class focused_wave:
             # end of time loop
 
             # dump out trace at device location
-            with open('trace.dat','w') as f:
+            with open(self.surfDir+os.sep+'trace.dat','w') as f:
                 f.write('#Data: t z(x=0,t) z(x=x_in,t)\n')
                 for ti,zi,z0i in zip(self.times,self.z_sim,self.z0_sim):
                     f.write('%f %f %f\n'%(ti,zi,z0i))
 
             # dump out peak profile
-            with open('peak.dat','w') as f:
+            with open(self.surfDir+os.sep+'peak.dat','w') as f:
                 f.write('#Data: x z(x,t=0)\n')
                 for xi,zi in zip(self.xpeak,self.zpeak):
                     f.write('%f %f\n'%(xi,zi))
@@ -267,7 +273,7 @@ class focused_wave:
     #
     # calculate reference values
     #
-    def calc_ref(self):
+    def calc_ref(self,tref=None):
         w = [] # frequency, rad/s
         S = [] # spectral amplitude, m^2
         p = [] # phase, rad
@@ -294,13 +300,22 @@ class focused_wave:
         self.p  = -np.array(p) # updated 2/10/16 after *coeffs*.txt output was changed
         self.k  = np.array(k)
 
-        self.z_ref  = np.zeros((self.Ntimes))
-        self.z0_ref = np.zeros((self.Ntimes))
-        t = self.times - self.toffset
-        for i in range(self.Ntimes):
+        if tref is None:
+            t = self.times - self.toffset
+            Ntimes = self.Ntimes
+        else:
+            t = tref
+            Ntimes = len(tref)   
+        self.z_ref  = np.zeros((Ntimes))
+        self.z0_ref = np.zeros((Ntimes))
+        for i in range(Ntimes):
             # updated 6/7/16 after spectral amplitude was corrected in final version
             self.z_ref[i]  = np.sum( self.A*np.cos( self.k*self.x_wec   - self.w*t[i] + self.p ) )#*self.dw
             self.z0_ref[i] = np.sum( self.A*np.cos( self.k*self.x_inlet - self.w*t[i] + self.p ) )#*self.dw
+
+        if self.ipeak < 0:
+            self.ipeak = np.argmax(self.z_ref)
+            self.tpeak = t[self.ipeak]
 
         print 'Calculating wave profile',self.ipeak,'at t =',self.tpeak,'~= tpeak'
         self.xpeak_ref  = np.linspace(-600,600,self.Nx)
@@ -323,48 +338,63 @@ class focused_wave:
 #        print 'Approx max ref dz(x,tpeak)/dx=',dzdx_max,'at x=',x_dzdx_max
 
         # analytically evaluate the derivative at t=0 (peak)
-        dzdx_ref  = np.zeros((len(self.xpeak)))
-        for i,x in enumerate(self.xpeak):
-            dzdx_ref[i] = np.sum( -self.A*self.k*np.sin( self.k*x + self.p ) )*self.dw
-        imax = np.argmax(np.abs(dzdx_ref))
-        x_dzdx_max = self.xpeak[imax]
-        dzdx_max = dzdx_ref[imax]
+        if self.calc_deriv:
+            dzdx_ref  = np.zeros((len(self.xpeak)))
+            for i,x in enumerate(self.xpeak):
+                dzdx_ref[i] = np.sum( -self.A*self.k*np.sin( self.k*x + self.p ) )*self.dw
+            imax = np.argmax(np.abs(dzdx_ref))
+            x_dzdx_max = self.xpeak[imax]
+            dzdx_max = dzdx_ref[imax]
 
-        print 'Max ref dz(x,tpeak)/dx=',dzdx_max,'at x=',x_dzdx_max
+            print 'Max ref dz(x,tpeak)/dx=',dzdx_max,'at x=',x_dzdx_max
+
+        self.histPlotRef = True
+        self.peakPlotRef = True
 
         return self.z_ref, self.z0_ref, self.xpeak_ref, self.zpeak_ref
 
     #
     # comparison plots
     #
-    def compare_hist(self):
-        fig, (ax0,ax1) = plt.subplots(2,sharex=True)
-        plt.subplots_adjust(hspace=0.25) #default hspace=0.2
+    def compare_hist(self,fig=None,ax0=None,ax1=None):
+        if fig is None:
+            fig, (ax0,ax1) = plt.subplots(2,sharex=True)
+            plt.subplots_adjust(hspace=0.25) #default hspace=0.2
 
-        ax0.plot(self.times,self.z0_ref,'k-',label='MLER input')
-        ax0.plot(self.times,self.z0_sim,'b.-',label='Star sim')
+        if self.histPlotRef:
+            ax0.plot(self.times,self.z0_ref,'k-',label='MLER input')
+            ax1.plot(self.times,self.z_ref,'k-',label='MLER input')
+
+        ax0.plot(self.times,self.z0_sim,'.-',label='Star sim')
         ax0.set_ylabel('z( x={:.2f}, t )'.format(self.x_inlet))
         ax0.set_title('Wave height at inlet location')
         ax0.legend(loc='best')
 
-        ax1.plot(self.times,self.z_ref,'k-',label='MLER input')
-        ax1.plot(self.times,self.z_sim,'b.-',label='Star sim')
+        ax1.plot(self.times,self.z_sim,'.-',label='Star sim')
         ax1.set_xlabel('t')
         ax1.set_ylabel('z( x= {:.2f}, t )'.format(self.x_wec))
         ax1.set_title('Wave height at device location')
 
         fig.savefig('focusedwave_trace.png')
 
-    def compare_peak_profile(self):
-        fig, ax = plt.subplots(1)
-        ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',label='MLER input')
-        ax.plot(self.xpeak,self.zpeak,'b.-',label='Star sim')
+        return fig,ax0,ax1
+
+    def compare_peak_profile(self,fig=None,ax=None):
+        if fig is None:
+            fig, ax = plt.subplots(1)
+
+        if self.peakPlotRef:
+            ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',label='MLER input')
+
+        ax.plot(self.xpeak,self.zpeak,'.-',label='Star sim')
         ax.set_xlabel('x')
         ax.set_ylabel('z( x, tpeak )')
         ax.set_title('Focused wave peak (t = {:f} s)'.format(self.tpeak))
         ax.legend(loc='best')
 
         fig.savefig('focusedwave_peak_profile.png')
+
+        return fig,ax
 
 #===================================================================
 if __name__ == '__main__':
