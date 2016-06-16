@@ -36,7 +36,7 @@ class csv:
         Noutputs = len(hdr) - 1 # don't count the independent variable
         self.Noutputs = Noutputs
         if len(self.outputnames)==0:
-            self.outputnames = [ s.replace('"','') for s in hdr ]
+            self.outputnames = [ s.strip().replace('"','') for s in hdr ]
         else: assert( len(self.outputnames)==Noutputs )
         x = np.zeros((N))
         y = np.zeros((N,Noutputs))
