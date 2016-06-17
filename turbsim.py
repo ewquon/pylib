@@ -162,7 +162,7 @@ class bts:
     #--end of self._readBTS()# }}}
 
     def readMeanProfile(self,Ufile='U.dat',Vfile='V.dat',Tfile='T.dat'):# {{{
-        """ Read planar averages (postprocessed separately) into arrays for interpolating, assuming that the heights in all files are the same. 
+        """ Read planar averages (postprocessed separately) into arrays for interpolating, assuming that the heights in all files are the same.
         Sets Ufn, Vfn, and Tfn that can be called for arbitrary height.
         """
         hmean,Umean,Vmean,Tmean = [], [], [], []
@@ -190,8 +190,8 @@ class bts:
     # }}}
 
     def readVarianceProfile(self,uufile='uu.dat',vvfile='vv.dat',wwfile='ww.dat'):# {{{
-        """ Read planar averages (postprocessed separately) into arrays for interpolating, assuming that the heights in all files are the same. 
-        Sets uuprofile, vvprofile, and wwprofile from input files.
+        """ Read planar averages (postprocessed separately) into arrays for interpolating, assuming that the heights in all files are the same.
+        Saves uu_profile, vv_profile, and ww_profile arrays from input files.
         """
         hmean,uumean,vvmean,wwmean = [], [], [], []
         with open(uufile,'r') as f:
@@ -211,6 +211,11 @@ class bts:
         self.uu_profile = np.array( uumean )
         self.vv_profile = np.array( vvmean )
         self.ww_profile = np.array( wwmean )
+
+        #from scipy import interpolate
+        #self.uu_fn = interpolate.interp1d(hmean,uumean,kind='linear',fill_value='extrapolate')
+        #self.vv_fn = interpolate.interp1d(hmean,vvmean,kind='linear',fill_value='extrapolate')
+        #self.ww_fn = interpolate.interp1d(hmean,wwmean,kind='linear',fill_value='extrapolate')
 
         self.variancesRead = True
     # }}}
@@ -323,7 +328,7 @@ class bts:
         for iz in range(kmax): uu[:,iz,:] *= self.scaling[0,iz]**2
         for iz in range(kmax): vv[:,iz,:] *= self.scaling[1,iz]**2
         for iz in range(kmax): ww[:,iz,:] *= self.scaling[2,iz]**2
-        print 'scaled full-field variances :',[ np.mean(uu), np.mean(vv), np.mean(ww) ]
+        print 'scaled full-field variances (mean):',[ np.mean(uu), np.mean(vv), np.mean(ww) ]
     # }}}
 
     #@profile
@@ -435,22 +440,37 @@ class bts:
         self.tkeProfileSet = True
     # }}}
 
-    def setScaling(self,tanh_z90,tanh_z50,max_scaling=1.0,output=''):# {{{
+    def setScaling(self,tanh_z90=0.0,tanh_z50=0.0,max_scaling=1.0,output=''):# {{{
         """ Set scaling of fluctuations with height
         Scaling function ranges from 0 to max_scaling. The heights at which the fluctuation magnitudes are decreased by 90% and 50% (tanh_z90 and tanh_z50, respectively) are specified to scale the hyperbolic tangent function; tanh_z90 should be set to approximately the inversion height:
           f = max_scaling * 0.5( tanh( k(z-z_50) ) + 1 )
         where
           k = arctanh(0.8) / (z_90-z_50)
         Note: If extendZ is used, that should be called to update the z coordinates prior to using this routine.
+
+        max_scaling may be:
+        1) a constant, equal for the x, y, and z directions; 
+        2) a list or nd.array of scalars; or
+        3) a list of lambda functions for non-tanh scaling
         """
+        evalfn = False
         if isinstance(max_scaling,list) or isinstance(max_scaling,np.ndarray):
             assert( len(max_scaling) == 3 )
+            if any( [ hasattr(f, '__call__') for f in max_scaling ] ): evalfn = True
         else:
+            if hasattr(max_scaling,'__call__'): evalfn = True
             max_scaling = [max_scaling,max_scaling,max_scaling]
 
-        k = np.arctanh(0.8) / (tanh_z90-tanh_z50)
+        if evalfn: print 'Using custom scaling function instead of tanh'
+        else:
+            assert( tanh_z90 > 0 and tanh_z50 > 0 )
+            k = np.arctanh(0.8) / (tanh_z90-tanh_z50)
+
         for i in range(3):
-            self.scaling[i,:] = max_scaling[i] * 0.5*(np.tanh(-k*(self.z-tanh_z50)) + 1.0)
+            if evalfn:
+                self.scaling[i,:] = max_scaling[i](self.z)
+            else:
+                self.scaling[i,:] = max_scaling[i] * 0.5*(np.tanh(-k*(self.z-tanh_z50)) + 1.0)
             fmin = np.min(self.scaling[i,:])
             fmax = np.max(self.scaling[i,:])
             assert( fmin >= 0. and fmax <= max_scaling[i] )
@@ -458,7 +478,10 @@ class bts:
         
         if output:
             with open(output,'w') as f:
-                f.write('# tanh scaling parameters: z_90={:f}, z_50={:f}, max_scaling={}\n'.format(tanh_z90,tanh_z50,max_scaling))
+                if evalfn:
+                    f.write('# custom scaling function\n')
+                else:
+                    f.write('# tanh scaling parameters: z_90={:f}, z_50={:f}, max_scaling={}\n'.format(tanh_z90,tanh_z50,max_scaling))
                 f.write('# z  f_u(z)  f_v(z)  f_w(z)\n')
                 for iz,z in enumerate(self.z):
                     f.write(' {:f} {f[0]:g} {f[1]:g} {f[2]:g}\n'.format(z,f=self.scaling[:,iz]))
