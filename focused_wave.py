@@ -279,19 +279,19 @@ class focused_wave:
         p = [] # phase, rad
         k = [] # wavenumber, rad^2/m
         print 'Reading MLER input file:',self.MLERinput
-        print '--- begin header ---'
+        sys.stderr.write('--- begin header ---\n')
         with open(self.MLERinput,'r') as f:
             for line in f:
                 if line.strip()=='': break
                 if line.startswith('#'):
-                    sys.stdout.write(line)
+                    sys.stderr.write(line)
                     continue
                 wi,Si,pp,ki = [ float(val) for val in line.split() ]
                 w.append(wi)
                 S.append(Si)
                 p.append(pp)
                 k.append(ki)
-        print '--- end header ---'
+        sys.stderr.write('--- end header ---\n')
 
         self.w  = np.array(w)
         self.dw = w[1] - w[0] #dw = np.diff(w)
