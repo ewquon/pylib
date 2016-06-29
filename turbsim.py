@@ -150,7 +150,8 @@ class bts:
             # calculate coordinates
             #
             if verbose: print 'Calculating coordinates'
-            self.y = -0.5*(self.NY-1)*self.dy + np.arange(self.NY,dtype=self.realtype)*self.dy
+            #self.y = -0.5*(self.NY-1)*self.dy + np.arange(self.NY,dtype=self.realtype)*self.dy
+            self.y =             np.arange(self.NY,dtype=self.realtype)*self.dy
             self.z = self.zbot + np.arange(self.NZ,dtype=self.realtype)*self.dz
             #self.ztow = self.zbot - np.arange(self.NZ,dtype=self.realtype)*self.dz #--NOT USED
 
@@ -380,6 +381,7 @@ class bts:
         if zMax < self.z[-1]:
             print 'zMax not changed from',self.z[-1],'to',zMax
             return
+        self.zbot = zMin
 
         imin = int(zMin/self.dz)
         imax = int(zMax/self.dz)
@@ -400,7 +402,7 @@ class bts:
         print '  after:',self.V.shape
 
         print 'Updating z coordinates and resetting scaling function'
-        self.z = zMin + np.arange(self.NZ,dtype=self.realtype)*self.dz
+        self.z = self.zbot + np.arange(self.NZ,dtype=self.realtype)*self.dz
         self.scaling = np.ones((3,self.NZ))
 
     # }}}
@@ -491,11 +493,13 @@ class bts:
     def writeMappedBC(self,outputdir='boundaryData',# {{{
             interval=1, Tstart=0., Tmax=None,
             xinlet=0.0, bcname='inlet',
+            LESyfac=None, LESzfac=None,
             writeU=True, writeT=True, writek=True):
         """ For use with OpenFOAM's timeVaryingMappedFixedValue boundary condition.
         This will create a points file and time directories in 'outputdir', which should be placed in constant/boundaryData/<patchname>.
         The output interval is in multiples of the TurbSim time step, with output up to time Tmax.
-        The inlet location and bcname should correspond to the LES inflow plane. 
+        Inlet location and bcname should correspond to the LES inflow plane. 
+        LESyfac and LESzfac specify refinement in the microscale domain.
         """
         import os
         if not os.path.isdir(outputdir):
@@ -512,6 +516,27 @@ class bts:
         if writeU:
             # for scaling fluctuations
             up = np.zeros((3,1,self.NY,self.NZ))
+
+        if LESyfac >= 1 and LESzfac >= 1:
+            NY = int( LESyfac*(self.NY-1) ) + 1
+            NZ = int( LESzfac*(self.NZ-1) ) + 1
+            print 'LES y resolution increased from',self.NY,'to',NY
+            print 'LES z resolution increased from',self.NZ,'to',NZ
+            jidx = np.zeros(NY,dtype=np.int)
+            kidx = np.zeros(NZ,dtype=np.int)
+            for j in range(NY): jidx[j] = int(j/LESyfac)
+            for k in range(NZ): kidx[k] = int(k/LESzfac)
+            y =             np.arange(NY,dtype=self.realtype)*self.dy/LESyfac
+            z = self.zbot + np.arange(NZ,dtype=self.realtype)*self.dz/LESzfac
+            print 'refined y range :',np.min(y),np.max(y)
+            print 'refined z range :',np.min(z),np.max(z)
+        else:
+            NY = self.NY
+            NZ = self.NZ
+            jidx = np.arange(NY,dtype=np.int)
+            kidx = np.arange(NZ,dtype=np.int)
+            y = self.y
+            z = self.z
 
         #
         # write points file
@@ -536,10 +561,10 @@ FoamFile
         print 'Writing',fname
         with open(fname,'w') as f:
             f.write(pointshdr.format(patchName=bcname))
-            f.write('{:d}\n(\n'.format(self.NY*self.NZ))
-            for j in range(self.NZ):
-                for i in range(self.NY):
-                    f.write('({:f} {:f} {:f})\n'.format(xinlet,self.y[i],self.z[j]))
+            f.write('{:d}\n(\n'.format(NY*NZ))
+            for k in range(NZ):
+                for j in range(NY):
+                    f.write('({:f} {:f} {:f})\n'.format(xinlet,y[j],z[k]))
             f.write(')\n')
 
         #
@@ -568,6 +593,9 @@ FoamFile
         istart = int(self.realtype(Tstart) / self.dt)
         iend = int(self.realtype(Tmax) / self.dt)
         print 'Outputting time length',(iend-istart)*self.dt
+        #
+        # time-step loop
+        #
         for i in range(istart,iend,interval):
             itime = np.mod(i-istart,self.N)
             tname = '{:f}'.format(self.realtype(i*self.dt)).rstrip('0').rstrip('.')
@@ -585,16 +613,15 @@ FoamFile
                 up[0,0,:,:] = self.V[0,:,:,itime]
                 up[1,0,:,:] = self.V[1,:,:,itime]
                 up[2,0,:,:] = self.V[2,:,:,itime]
-                for iz in range(self.NZ):
+                for iz in range(self.NZ): # note: up is the original size
                     for i in range(3):
                         up[i,0,:,iz] *= self.scaling[i,iz]
                 with open(fname,'w') as f:
                     f.write(datahdr.format(patchType='vector',patchName=bcname,timeName=tname,avgValue='(0 0 0)'))
-                    f.write('{:d}\n(\n'.format(self.NY*self.NZ))
-                    for k in range(self.NZ):
-                        for j in range(self.NY):
-                            #f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.V[:,j,k,itime]+self.Uinlet[k,:]))
-                            f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.Uinlet[k,:]+up[:,0,j,k]))
+                    f.write('{:d}\n(\n'.format(NY*NZ))
+                    for k in range(NZ):
+                        for j in range(NY):
+                            f.write('({v[0]:f} {v[1]:f} {v[2]:f})\n'.format(v=self.Uinlet[kidx[k],:]+up[:,0,jidx[j],kidx[k]]))
                     f.write(')\n')
 
             #
@@ -605,10 +632,10 @@ FoamFile
                 sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
                 with open(fname,'w') as f:
                     f.write(datahdr.format(patchType='scalar',patchName=bcname,timeName=tname,avgValue='0'))
-                    f.write('{:d}\n(\n'.format(self.NY*self.NZ))
-                    for j in range(self.NZ):
-                        for i in range(self.NY):
-                            f.write('{s:f}\n'.format(s=self.Tinlet[j]))
+                    f.write('{:d}\n(\n'.format(NY*NZ))
+                    for k in range(NZ):
+                        for j in range(NY):
+                            f.write('{s:f}\n'.format(s=self.Tinlet[kidx[k]]))
                     f.write(')\n')
 
             #
@@ -619,11 +646,14 @@ FoamFile
                 sys.stdout.write('Writing {} (itime={})\n'.format(fname,itime))
                 with open(fname,'w') as f:
                     f.write(datahdr.format(patchType='scalar',patchName=bcname,timeName=tname,avgValue='0'))
-                    f.write('{:d}\n(\n'.format(self.NY*self.NZ))
-                    for j in range(self.NZ):
-                        for i in range(self.NY):
-                            f.write('{s:f}\n'.format(s=self.kinlet[j]))
+                    f.write('{:d}\n(\n'.format(NY*NZ))
+                    for k in range(NZ):
+                        for j in range(NY):
+                            f.write('{s:f}\n'.format(s=self.kinlet[kidx[k]]))
                     f.write(')\n')
+
+        # end of time-step loop
+
     # }}}
 
     def writeVTK(self,fname,itime=None,output_time=None,stdout='verbose'):# {{{
