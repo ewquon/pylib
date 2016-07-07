@@ -31,7 +31,7 @@ class focused_wave:
             toffset=toffset,
             x_wec=x_wec,
             x_inlet=x_inlet,
-            calc_deriv=True):
+            calc_deriv=False):
 
         # inputs
         self.surfDir    = surfDir
@@ -48,19 +48,24 @@ class focused_wave:
         self.indices = []
         self.ipeak = -1
         self.ipeak_ref = -1
+        self.ipeak_ref0 = -1 
 
         self.times  = []
+        self.Ntimes = -1
         self.z_sim  = []
         self.z_ref  = []
         self.z0_sim = []
         self.z0_ref = []
 
-        self.tpeak = -1
+        self.tpeak = -1         # simulated peak profile
         self.xpeak = []
         self.zpeak = []
-        self.tpeak_ref = -1
-        self.xpeak_ref  = []
-        self.zpeak_ref  = []
+        self.tpeak_ref = -1     # reference profile at simulated peak time, self.tpeak=self.t[self.ipeak]
+        self.xpeak_ref = []
+        self.zpeak_ref = []
+        self.tpeak_ref0 = -1    # reference peak profile
+        self.xpeak_ref0 = []
+        self.zpeak_ref0 = []
 
     #
     # find csv files
@@ -200,9 +205,10 @@ class focused_wave:
                 self.zpeak = np.array(z)
 
             if np.max(np.abs( tread-self.times )) < 1e-12:
+                # times match, no need to read data again
                 self.ipeak = np.argmax(self.z_sim)
                 self.tpeak = self.times[self.ipeak]
-                self.tpeak_ref = self.times[self.ipeak_ref]
+                print 'Simulated peak profile',self.ipeak,'at',self.tpeak
                 read_data = False
             else:
                 print 'Different times -- read:',tread
@@ -230,9 +236,9 @@ class focused_wave:
 
             # end of time loop
             self.ipeak = np.argmax(self.z_sim)
-            idxpeak = self.indices[self.ipeak]
-            fnamepeak = self.csvfiles[idxpeak]
-            x,z = self.read_csv(fnamepeak)
+            idx = self.indices[self.ipeak]
+            fname = self.csvfiles[idx]
+            x,z = self.read_csv(fname)
             self.xpeak = x
             self.zpeak = z
             self.tpeak = self.times[self.ipeak]
@@ -278,14 +284,14 @@ class focused_wave:
         x_dzdx_max = self.xpeak[imax+1]
         dzdx_max = dzdx[imax]
 
-        print 'Approx max dz(x,tpeak)/dx=',dzdx_max,'at x=',x_dzdx_max
+        print 'Max dz(x,tpeak)/dx ~=',dzdx_max,'at x=',x_dzdx_max,'(approximate)'
 
         return self.xpeak, self.zpeak, self.z_sim, self.z0_sim
 
     #
     # calculate reference values
     #
-    def calc_ref(self,tref=None):
+    def calc_ref(self,t=None):
         w = [] # frequency, rad/s
         S = [] # spectral amplitude, m^2
         p = [] # phase, rad
@@ -312,12 +318,13 @@ class focused_wave:
         self.p  = -np.array(p) # updated 2/10/16 after *coeffs*.txt output was changed
         self.k  = np.array(k)
 
-        if tref is None:
-            t = self.times - self.toffset
+        if t is None:
+            t = np.array(self.times) - self.toffset
             Ntimes = self.Ntimes
         else:
-            t = tref
-            Ntimes = len(tref)   
+            Ntimes = len(t)   
+
+        # calculate trace at device and inlet locations
         self.z_ref  = np.zeros((Ntimes))
         self.z0_ref = np.zeros((Ntimes))
         for i in range(Ntimes):
@@ -325,17 +332,33 @@ class focused_wave:
             self.z_ref[i]  = np.sum( self.A*np.cos( self.k*self.x_wec   - self.w*t[i] + self.p ) )#*self.dw
             self.z0_ref[i] = np.sum( self.A*np.cos( self.k*self.x_inlet - self.w*t[i] + self.p ) )#*self.dw
 
-        if self.ipeak < 0:
-            self.ipeak = np.argmax(self.z_ref)
-            self.tpeak = t[self.ipeak]
+        self.xpeak_ref0 = np.linspace(-600,600,self.Nx)
+        xref = self.xpeak_ref0 - self.x_wec
 
-        print 'Calculating wave profile',self.ipeak,'at t =',self.tpeak,'~= tpeak'
-        self.xpeak_ref  = np.linspace(-600,600,self.Nx)
-        xref = self.xpeak_ref - self.x_wec
-        self.zpeak_ref  = np.zeros((self.Nx))
+        # debug
+        #print 't range',np.min(t),np.max(t)                                # result: -149.8 150.0
+        #print 'self.times range',np.min(self.times),np.max(self.times)     # result: 0.2 300.0
+
+        self.ipeak_ref0 = np.argmax(self.z_ref)
+        self.tpeak_ref0 = t[self.ipeak_ref0] + self.toffset
+        self.zpeak_ref0 = np.zeros((self.Nx))
+        print 'Calculating reference wave profile',self.ipeak_ref0,'at t =',self.tpeak_ref0
         for i in range(self.Nx):
             # updated 6/7/16 after spectral amplitude was corrected in final version
-            self.zpeak_ref[i] = np.sum( self.A*np.cos( self.k*xref[i] - self.w*t[self.ipeak] + self.p ) )#*self.dw
+            #self.zpeak_ref[i] = np.sum( self.A*np.cos( self.k*xref[i] - self.w*t[self.ipeak] + self.p ) )#*self.dw
+            self.zpeak_ref0[i] = np.sum( self.A*np.cos( self.k*xref[i] - self.w*t[self.ipeak_ref0] + self.p ) )#*self.dw
+
+        self.xpeak_ref = self.xpeak_ref0
+        #self.ipeak_ref = np.argmin(np.abs(self.times - self.tpeak))
+        #self.tpeak_ref = self.times[self.ipeak_ref]
+        self.ipeak_ref = np.argmin(np.abs(t+self.toffset - self.tpeak))
+        self.tpeak_ref = t[self.ipeak_ref] + self.toffset
+        self.zpeak_ref = np.zeros((self.Nx))
+        print 'Calculating reference wave profile',self.ipeak_ref, \
+                'at t =',self.tpeak_ref,'~= simulated peak at',self.tpeak
+        for i in range(self.Nx):
+            self.zpeak_ref[i] = np.sum( self.A*np.cos( self.k*xref[i] - self.w*t[self.ipeak_ref] + self.p ) )#*self.dw
+
 
         # numerically evaluate the derivative
 ##        dx = self.xpeak_ref[1:] - self.xpeak_ref[:-1]
@@ -380,7 +403,7 @@ class focused_wave:
         ax0.plot(self.times,self.z0_sim,'.-',label='Star sim')
         ax0.set_ylabel('z( x={:.2f}, t )'.format(self.x_inlet))
         ax0.set_title('Wave height at inlet location')
-        ax0.legend(loc='best')
+        ax0.legend(loc='best',fontsize='small')
 
         ax1.plot(self.times,self.z_sim,'.-',label='Star sim')
         ax1.set_xlabel('t')
@@ -397,15 +420,18 @@ class focused_wave:
 
         if self.peakPlotRef:
             #ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',label='MLER input')
-            ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',label='MLER input (t={:.1f})'.format(self.tpeak_ref))
+            ax.plot(self.xpeak_ref0,self.zpeak_ref0,'k--',lw=2,label='MLER peak wave (t={:.1f})'.format(self.tpeak_ref0))
+            ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',label='MLER wave (t={:.1f})'.format(self.tpeak_ref))
 
         #ax.plot(self.xpeak,self.zpeak,'.-',label='Star sim')
         ax.plot(self.xpeak,self.zpeak,'.-',label='Star sim (t={:.1f})'.format(self.tpeak))
+        ax.set_xlim((self.x_inlet,np.abs(self.x_inlet)))
+
         ax.set_xlabel('x')
         ax.set_ylabel('z( x, tpeak )')
         #ax.set_title('Focused wave peak (t = {:.1f} s)'.format(self.tpeak))
         ax.set_title('Focused wave during peak response')
-        ax.legend(loc='best')
+        ax.legend(loc='best',fontsize='small')
 
         fig.savefig('focusedwave_peak_profile.png')
 
