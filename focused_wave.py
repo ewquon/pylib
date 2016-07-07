@@ -47,6 +47,7 @@ class focused_wave:
         self.csvfiles = []
         self.indices = []
         self.ipeak = -1
+        self.ipeak_ref = -1
 
         self.times  = []
         self.z_sim  = []
@@ -57,6 +58,7 @@ class focused_wave:
         self.tpeak = -1
         self.xpeak = []
         self.zpeak = []
+        self.tpeak_ref = -1
         self.xpeak_ref  = []
         self.zpeak_ref  = []
 
@@ -87,7 +89,7 @@ class focused_wave:
             delta = np.abs(t-self.toffset)
             if delta < nearpeak:
                 nearpeak = delta
-                self.ipeak = i
+                self.ipeak_ref = i
         self.indices = [ i[0] for i in sorted(enumerate(self.times), key=lambda x:x[1]) ]
         self.times   = self.times[self.indices]
         return self.times, self.indices
@@ -198,7 +200,9 @@ class focused_wave:
                 self.zpeak = np.array(z)
 
             if np.max(np.abs( tread-self.times )) < 1e-12:
+                self.ipeak = np.argmax(self.z_sim)
                 self.tpeak = self.times[self.ipeak]
+                self.tpeak_ref = self.times[self.ipeak_ref]
                 read_data = False
             else:
                 print 'Different times -- read:',tread
@@ -219,11 +223,19 @@ class focused_wave:
                 self.z_sim[itime]  = np.interp(self.x_wec,x,z)
                 self.z0_sim[itime] = np.interp(self.x_inlet,x,z)
 
-                if itime==self.ipeak:
-                    self.xpeak = x
-                    self.zpeak = z
-                    self.tpeak = t
+                #if itime==self.ipeak:
+                #    self.xpeak = x
+                #    self.zpeak = z
+                #    self.tpeak = t
+
             # end of time loop
+            self.ipeak = np.argmax(self.z_sim)
+            idxpeak = self.indices[self.ipeak]
+            fnamepeak = self.csvfiles[idxpeak]
+            x,z = self.read_csv(fnamepeak)
+            self.xpeak = x
+            self.zpeak = z
+            self.tpeak = self.times[self.ipeak]
 
             # dump out trace at device location
             with open(self.surfDir+os.sep+'trace.dat','w') as f:
@@ -233,13 +245,13 @@ class focused_wave:
 
             # dump out peak profile
             with open(self.surfDir+os.sep+'peak.dat','w') as f:
-                f.write('#Data: x z(x,t=0)\n')
+                f.write('#Data: x z(x,t={:f})\n'.format(self.tpeak))
                 for xi,zi in zip(self.xpeak,self.zpeak):
                     f.write('%f %f\n'%(xi,zi))
 
         # endif read_data
 
-        print 'Max z(x=0,t)=',np.max(self.z_sim),'at t=',self.times[np.argmax(self.z_sim)]
+        print 'Max z(x=0,t)=',np.max(self.z_sim),'at t=',self.times[self.ipeak]
 
         # numerically evaluate the derivative
 
@@ -384,12 +396,15 @@ class focused_wave:
             fig, ax = plt.subplots(1)
 
         if self.peakPlotRef:
-            ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',label='MLER input')
+            #ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',label='MLER input')
+            ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',label='MLER input (t={:.1f})'.format(self.tpeak_ref))
 
-        ax.plot(self.xpeak,self.zpeak,'.-',label='Star sim')
+        #ax.plot(self.xpeak,self.zpeak,'.-',label='Star sim')
+        ax.plot(self.xpeak,self.zpeak,'.-',label='Star sim (t={:.1f})'.format(self.tpeak))
         ax.set_xlabel('x')
         ax.set_ylabel('z( x, tpeak )')
-        ax.set_title('Focused wave peak (t = {:f} s)'.format(self.tpeak))
+        #ax.set_title('Focused wave peak (t = {:.1f} s)'.format(self.tpeak))
+        ax.set_title('Focused wave during peak response')
         ax.legend(loc='best')
 
         fig.savefig('focusedwave_peak_profile.png')
