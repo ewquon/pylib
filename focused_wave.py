@@ -46,9 +46,6 @@ class focused_wave:
         # outputs
         self.csvfiles = []
         self.indices = []
-        self.ipeak = -1
-        self.ipeak_ref = -1
-        self.ipeak_ref0 = -1 
 
         self.times  = []
         self.Ntimes = -1
@@ -57,13 +54,19 @@ class focused_wave:
         self.z0_sim = []
         self.z0_ref = []
 
-        self.tpeak = -1         # simulated peak profile
+        # - simulated peak profile (from self.times, self.z_sim)
+        self.tpeak = -1         # 0 < self.tpeak <= Tmax
+        self.ipeak = -1
         self.xpeak = []
         self.zpeak = []
-        self.tpeak_ref = -1     # reference profile at simulated peak time, self.tpeak=self.t[self.ipeak]
+        # - reference profile at simulated peak time, self.tpeak = self.t[self.ipeak]
+        self.tpeak_ref = -1
+        self.ipeak_ref = -1
         self.xpeak_ref = []
         self.zpeak_ref = []
-        self.tpeak_ref0 = -1    # reference peak profile
+        # - reference peak profile
+        self.tpeak_ref0 = -1
+        self.ipeak_ref0 = -1 
         self.xpeak_ref0 = []
         self.zpeak_ref0 = []
 
@@ -218,6 +221,7 @@ class focused_wave:
         except IOError: pass
 
         if read_data:
+            # read of trace.dat and peak.dat failed or times don't match
             for itime in range(self.Ntimes):
                 idx     = self.indices[itime]
                 t       = self.times[itime]
@@ -323,6 +327,7 @@ class focused_wave:
             Ntimes = self.Ntimes
         else:
             Ntimes = len(t)   
+        print 'Time range:',np.min(t),np.max(t)
 
         # calculate trace at device and inlet locations
         self.z_ref  = np.zeros((Ntimes))
@@ -348,16 +353,17 @@ class focused_wave:
             #self.zpeak_ref[i] = np.sum( self.A*np.cos( self.k*xref[i] - self.w*t[self.ipeak] + self.p ) )#*self.dw
             self.zpeak_ref0[i] = np.sum( self.A*np.cos( self.k*xref[i] - self.w*t[self.ipeak_ref0] + self.p ) )#*self.dw
 
-        self.xpeak_ref = self.xpeak_ref0
         #self.ipeak_ref = np.argmin(np.abs(self.times - self.tpeak))
         #self.tpeak_ref = self.times[self.ipeak_ref]
-        self.ipeak_ref = np.argmin(np.abs(t+self.toffset - self.tpeak))
-        self.tpeak_ref = t[self.ipeak_ref] + self.toffset
-        self.zpeak_ref = np.zeros((self.Nx))
-        print 'Calculating reference wave profile',self.ipeak_ref, \
-                'at t =',self.tpeak_ref,'~= simulated peak at',self.tpeak
-        for i in range(self.Nx):
-            self.zpeak_ref[i] = np.sum( self.A*np.cos( self.k*xref[i] - self.w*t[self.ipeak_ref] + self.p ) )#*self.dw
+        if not self.tpeak is -1: # allow us to call this without processing any csv series
+            self.ipeak_ref = np.argmin(np.abs(t+self.toffset - self.tpeak))
+            self.tpeak_ref = t[self.ipeak_ref] + self.toffset
+            self.xpeak_ref = self.xpeak_ref0
+            self.zpeak_ref = np.zeros((self.Nx))
+            print 'Calculating reference wave profile',self.ipeak_ref, \
+                    'at t =',self.tpeak_ref,'~= simulated peak at',self.tpeak
+            for i in range(self.Nx):
+                self.zpeak_ref[i] = np.sum( self.A*np.cos( self.k*xref[i] - self.w*t[self.ipeak_ref] + self.p ) )#*self.dw
 
 
         # numerically evaluate the derivative
@@ -420,11 +426,11 @@ class focused_wave:
 
         if self.peakPlotRef:
             #ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',label='MLER input')
-            ax.plot(self.xpeak_ref0,self.zpeak_ref0,'k--',lw=2,label='MLER peak wave (t={:.1f})'.format(self.tpeak_ref0))
-            ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',label='MLER wave (t={:.1f})'.format(self.tpeak_ref))
+            ax.plot(self.xpeak_ref0,self.zpeak_ref0,'k--',label='MLER peak wave (t={:.1f})'.format(self.tpeak_ref0))
+            ax.plot(self.xpeak_ref,self.zpeak_ref,'k-',lw=2,label='MLER wave (t={:.1f})'.format(self.tpeak_ref))
 
         #ax.plot(self.xpeak,self.zpeak,'.-',label='Star sim')
-        ax.plot(self.xpeak,self.zpeak,'.-',label='Star sim (t={:.1f})'.format(self.tpeak))
+        ax.plot(self.xpeak,self.zpeak,'.-',lw=2,label='Star sim (t={:.1f})'.format(self.tpeak))
         ax.set_xlim((self.x_inlet,np.abs(self.x_inlet)))
 
         ax.set_xlabel('x')
