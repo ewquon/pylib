@@ -297,7 +297,7 @@ class focused_wave:
     #
     def calc_ref(self,t=None):
         w = [] # frequency, rad/s
-        S = [] # spectral amplitude, m^2
+        S = [] # spectral amplitude, m^2-s
         p = [] # phase, rad
         k = [] # wavenumber, rad^2/m
         print 'Reading MLER input file:',self.MLERinput
