@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import sys
+import csv
 import matplotlib.pyplot as plt
 
 # stop reading file if change in any of the data values is > THRESHOLD
@@ -28,17 +29,18 @@ def plot(fname, plotlist=[], legendnames=[], \
 
     data = []
     with open(fname) as f:
+        csvdata = csv.reader(f)
 
         # check for single header line
-        line = f.readline().strip().split(',')
+        line = csvdata.next()
         if verbose: print line
-        Nvar = len(line) - 1
+        Nvar = len(line) - 1 #dependent variables only
         try:
             float(line[0]) # first line is data
             varNames = [xname] + ['y'+str(i) for i in range(1,Nvar+1)]
-        except ValueError: # first line is header
-            varNames = line
-            line = f.readline().split(',') # get next line
+        except ValueError:
+            varNames = line # first line is header
+            line = csvdata.next()
         if verbose: print Nvar,'dependent variables in file :',varNames
 
         # save first line of data
@@ -47,8 +49,8 @@ def plot(fname, plotlist=[], legendnames=[], \
 
         # read rest of file
         prevValues = []
-        for line in f:
-            values = [float(s) for s in line.split(',')]
+        for line in csvdata:
+            values = [float(s) for s in line]
     #        if len(prevValues) > 0:
     #            delta = [abs(v2/v1) for v1,v2 in zip(prevValues,values)]
     #            #if any(delta > THRESHOLD):
@@ -75,11 +77,14 @@ def plot(fname, plotlist=[], legendnames=[], \
         plotlist = [plotlist]
     if verbose: print 'Plotting variables:',[varNames[var] for var in plotlist]
 
+    # allow specification of custom legend labels
     if len(legendnames)==0:
         legendnames = [ varNames[var] for var in plotlist ]
 
+    # plot everything
     for var,lstr in zip(plotlist,legendnames):
         curAxes.plot(data[0],data[var],style,label=lstr)
+
     curAxes.legend(loc='best')
     curAxes.set_xlabel(varNames[0])
     curAxes.set_ylabel(yname)
