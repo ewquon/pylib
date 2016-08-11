@@ -11,12 +11,11 @@ class uniform:
     def __init__(self,path='.'):
         """ Sets timeNames and sampleNames with the time directory and sample names, respectively.
         Sets t to a numpy array of times
-        Sets fieldNames to the name of the scalar or vector fields
         """
         self.path = path
         self.t = []
         self.timeNames = []
-        self.sampleFieldNames = []
+        self.sampleNames = []
 
         # get list of times from directory names
         try:
@@ -56,12 +55,12 @@ class uniform:
             fsplit = f.split('.')
             assert( fsplit[-1] == self.sampleExt )
             name = '.'.join( fsplit[:-1] )
-            self.sampleFieldNames.append( name )
+            self.sampleNames.append( name )
 
     def __repr__(self):
         s = 'Read times, t = %s\n' % (self.t) \
           + 'Sample names :'
-        for name in sorted( self.sampleFieldNames ):
+        for name in sorted( self.sampleNames ):
             s += '\n  %s' % name
         return s
 
@@ -73,8 +72,8 @@ class uniform:
         """
         found = False
         suffix = '_' + field
-        for f in self.sampleFieldNames:
-            if f.startswith(name) and suffix in f:
+        for f in self.sampleNames:
+            if f.startswith(name) and f.endswith(suffix):
                 found = True
                 break
         if not found:
@@ -135,8 +134,11 @@ class uniform:
             print ''
 
             print '  saving',ufile
-            np.save( xfile, x )
-            np.save( ufile, U )
+            try:
+                np.save( xfile, x )
+                np.save( ufile, U )
+            except IOError as err:
+                print '  warning, unable to write out npy file:',err
 
         # done reading sample
         if verbose:

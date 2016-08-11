@@ -1,4 +1,3 @@
-#!/usr/local/bin/python
 #
 # VTK I/O helper module
 # written by Eliot Quon (eliot.quon@nrel.gov)
@@ -60,7 +59,7 @@ def vtk_write_rectilinear_grid(f,x,y,z,u,v,w,dataname='velocity'):# {{{
                 f.write(' {:f} {:f} {:f}\n'.format(u[j,i,k],v[j,i,k],w[j,i,k]))# }}}
 """^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"""
 
-def vtk_write_structured_points(f,nx,ny,nz, # {{{
+def vtk_write_structured_points(f,nx,ny,nz,
         data, datatype=['vector'],
         ds=None,dx=None,dy=None,dz=None,
         origin=(0.0,0.0,0.0),
@@ -73,7 +72,8 @@ def vtk_write_structured_points(f,nx,ny,nz, # {{{
     Additional vectors may be specified as additional scalar arguments; example:
       vtk_write_structured_points(f,nx,ny,nz,[u,v,w,u1,v2,w2],ds=1.0,dataname=['mean','fluctuation'])
     """
-    # caluclate grid spacings if needed
+    # {{{
+    # calculate grid spacings if needed
     if ds:
         if not dx: dx = ds
         if not dy: dy = ds
@@ -134,8 +134,11 @@ def vtk_write_structured_points(f,nx,ny,nz, # {{{
             idx += 1
         else: continue
 
-        try: name = dataname[idata]
-        except IndexError: name = outputtype+str(idata)
+        try:
+            #name = dataname[idata]
+            name = dataname[idata].replace(' ','_')
+        except IndexError:
+            name = outputtype+str(idata)
 
         if outputtype=='vector':
             f.write('{:s}S {:s} {:s}\n'.format(outputtype.upper(),name,vtk_datatype))
@@ -202,7 +205,5 @@ def vtk_write_structured_points(f,nx,ny,nz, # {{{
                     for j in range(ny):
                         for i in range(nx):
                             f.write(' {:f}\n'.format(u[j,i,k]))
-
-
 # }}}
 
