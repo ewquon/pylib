@@ -234,8 +234,10 @@ class bts:
                             (self.V[0,j  ,k  ,i+1]-self.V[0,j  ,k  ,i-1])/twodx + \
                             (self.V[1,j+1,k  ,i  ]-self.V[1,j-1,k  ,i  ])/twody + \
                             (self.V[2,j  ,k+1,i  ]-self.V[2,j  ,k-1,i  ])/twodz
-        self.divmean = np.mean(field.div,axis=(1,2))
-        self.divmax = np.max(np.abs(field.div),axis=(1,2))
+        self.divmean = np.mean(self.div,axis=(1,2))
+        self.divmax = np.max(np.abs(self.div),axis=(1,2))
+        print '  average divergence (differential):',self.divmean
+        print '  max divergence (differential):',self.divmax
 
         print 'Integrating velocity fluxes'
         dS = self.dy*self.dz
@@ -282,7 +284,11 @@ class bts:
             self.intdiv[i] = \
                 dS*(np.sum(Uin) - np.sum(Uout)) + \
                 dSy*(np.sum(Vin) - np.sum(Vout)) + \
-                dSz*(np.sum(Win) - np.sum(Wout))# }}}
+                dSz*(np.sum(Win) - np.sum(Wout))
+
+        print '  average divergence (integrated):', np.mean(self.intdiv)
+        print '  max divergence (integrated):', np.max(np.abs(self.intdiv))
+        # }}}
 
     def calculateRMS(self,output=''):# {{{
         """ Calculate root-mean square or standard deviation of the fluctuating velocities.
