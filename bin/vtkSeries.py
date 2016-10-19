@@ -1,4 +1,11 @@
 #!/usr/local/bin/python
+#
+# for creating symlinks to output from the OpenFOAM sample utility
+# expected directory structure:
+#   postProcessing/surfaces/<time>/<var>_<setName>.vtk
+# result:
+#   postProcessing/surfaces/<setName>/<var>_<time>.vtk
+#
 import os
 
 dirlist = []
@@ -33,15 +40,12 @@ extNames = []
 for timestep_dir in dirlist:
     print 'Processing', timestep_dir
     for f in [ f for f in os.listdir(timestep_dir) if os.path.isfile(os.path.join(timestep_dir,f)) ]:
-        # fname = f.split('.')[0]
-        # var = fname.split('_')[0]
-        # #name = fname.split('_')[1]
-        # name = '_'.join(fname.split('_')[1:])
-        fname = f.split('.')
-        ext = fname[1]
-        fbasename = fname[0].split('_')
-        var = fbasename[-1]
-        name = '_'.join(fbasename[0:-1])
+        fsplit = f.split('.')
+        fbasename = '.'.join(fsplit[0:-1])
+        ext = fsplit[-1]
+        fbasesplit = fbasename.split('_')
+        var = fbasesplit[0]
+        name = '_'.join(fbasesplit[1:])
         print ' ',f,'( name=',name,' var=',var,' ext=',ext,')'
         if name=='': name = 'timeSeries'
         if not name in sampleNames:
