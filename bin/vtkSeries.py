@@ -68,12 +68,12 @@ for sample in sampleNames:
         for i in range(len(timesteps)):
             dname = dirlist[indices[i]]#.split()
             if sample=='timeSeries':
-                src = os.getcwd() + os.sep + dname + os.sep + var+'.'+ext
+                src = os.path.join( os.getcwd(), dname, var+'.'+ext )
                 dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[i]),extNew)
             else:
-                src = os.getcwd() + os.sep + dname + os.sep + sample+'_'+var+'.'+ext
-                #dest = sample + os.sep + '%s_%d.vtk'%(var,i+1)
-                #dest = sample + os.sep + '%s_%g.%s'%(var,timesteps[i],extNew)
+                #src = os.path.join( os.getcwd(), dname, sample+'_'+var+'.'+ext )
+                # result, e.g.: /Users/equon/wndpltdesign/inflow/5mps_ab/postProcessing/surfaces/9000/slice_cross_stream_U.vtk
+                src = os.path.join( os.getcwd(), dname, var+'_'+sample+'.'+ext )
                 dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[i]),extNew)
             print dest,'-->',src
             try:
