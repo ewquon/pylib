@@ -66,15 +66,16 @@ indices = sorted(range(len(timesteps)), key=lambda k: timesteps[k])
 for sample in sampleNames:
     for var in varNames:
         for i in range(len(timesteps)):
-            dname = dirlist[indices[i]]#.split()
+            idx = indices[i]
+            dname = dirlist[idx]#.split()
             if sample=='timeSeries':
                 src = os.path.join( os.getcwd(), dname, var+'.'+ext )
-                dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[i]),extNew)
+                dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[idx]),extNew)
             else:
                 #src = os.path.join( os.getcwd(), dname, sample+'_'+var+'.'+ext )
                 # result, e.g.: /Users/equon/wndpltdesign/inflow/5mps_ab/postProcessing/surfaces/9000/slice_cross_stream_U.vtk
                 src = os.path.join( os.getcwd(), dname, var+'_'+sample+'.'+ext )
-                dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[i]),extNew)
+                dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[idx]),extNew)
             print dest,'-->',src
             try:
                 os.symlink(src,dest)
