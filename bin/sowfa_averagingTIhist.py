@@ -19,6 +19,8 @@ for ih,z in enumerate(heights):
 plt.legend(loc='best')
 plt.show()
 
+plt.savefig('TIhist.png')
+
 data.calcTI( heights )
 for i,h in enumerate(heights):
     print 'z=',h,':'

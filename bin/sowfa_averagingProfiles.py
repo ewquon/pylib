@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 import sys
 from SOWFA.postProcessing.averaging import read
+import refs
 import matplotlib.pyplot as plt
-heights = [80.,90.]
 data = read( *sys.argv[1:] )
+
+ref = refs.read()
 
 #------------------------------------------------------------------------------
 fig0,ax0 = plt.subplots(ncols=2)
@@ -11,6 +13,12 @@ fig0,ax0 = plt.subplots(ncols=2)
 ax0[0].plot( data.U_mean[-1,:], data.hLevelsCell, label=r'$U$' )
 ax0[0].plot( data.V_mean[-1,:], data.hLevelsCell, label=r'$V$' )
 ax0[0].plot( data.W_mean[-1,:], data.hLevelsCell, label=r'$W$' )
+if ref:
+    try:
+        z = data.hLevelsCell
+        refprofile = ref.Uref * (z/ref.zref)**ref.shear
+    except NameError: pass
+    ax0[0].plot( refprofile, z, 'k--', lw=2, label='input' )
 ax0[0].set_xlabel('Velocity (m/s)')
 ax0[0].set_ylabel('Height (m)')
 ax0[0].legend(loc='best')
