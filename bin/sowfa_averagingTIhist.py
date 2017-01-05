@@ -17,9 +17,8 @@ for ih,z in enumerate(heights):
     print 'wrote',fname
 
 plt.legend(loc='best')
-plt.show()
-
 plt.savefig('TIhist.png')
+plt.show()
 
 data.calcTI( heights )
 for i,h in enumerate(heights):
