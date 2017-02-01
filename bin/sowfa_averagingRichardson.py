@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Estimate the Richardson number from the averaged T profile
+# Estimate the Richardson number from the averaged T profile at the final time step
 # - should range between -O(0.01) to +O(0.1) for unstable to stable
 #
 import sys
