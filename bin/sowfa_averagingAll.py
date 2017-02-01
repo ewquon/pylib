@@ -100,3 +100,28 @@ fig2.savefig('Profiles_SFS.png')
 #==========
 plt.show()
 #==========
+
+fname = 'averagingProfiles.csv'
+np.savetxt( fname,
+        np.vstack((
+            data.hLevelsCell,
+            data.U_mean[-1,:],
+            data.V_mean[-1,:],
+            data.W_mean[-1,:],
+            data.T_mean[-1,:],
+            data.uu_mean[-1,:],
+            data.vv_mean[-1,:],
+            data.ww_mean[-1,:],
+            data.uv_mean[-1,:],
+            data.uw_mean[-1,:],
+            data.vw_mean[-1,:],
+            data.R11_mean[-1,:],
+            data.R22_mean[-1,:],
+            data.R33_mean[-1,:],
+            data.R12_mean[-1,:],
+            data.R13_mean[-1,:],
+            data.R23_mean[-1,:]
+            )).T,
+        header='Time,U,V,W,T,uu,vv,ww,uv,uw,vw,R11,R22,R33,R12,R13,R23',
+        delimiter=',' )
+print 'wrote',fname
