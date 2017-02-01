@@ -17,8 +17,8 @@ Hhub = ref.zref
 heights = [Hhub/4, Hhub/2, Hhub]
 
 Uinf = ref.Uref
-alpha = data.shear(heights=heights,Uref=Uinf,zref=Hhub)
-veer = data.veer(hmax=Hhub)
+alpha = data.calcShear(heights=heights,Uref=Uinf,zref=Hhub)
+veer = data.calcVeer(hmax=Hhub)
 print 'shear coefficient, alpha=',alpha
 print 'veer=',veer,'deg'
 
