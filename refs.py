@@ -30,6 +30,12 @@ class refData(object):
         for key,val in dataDict.iteritems():
             setattr(self,key,val)
 
+    def __getattribute__(self,name):
+        try:
+            return object.__getattribute__(self,name)
+        except AttributeError:
+            return 'n/a'
+
     def __str__(self):
         s = ''
         for key,val in self._dict.iteritems():

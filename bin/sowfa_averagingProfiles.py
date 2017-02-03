@@ -3,7 +3,7 @@ import sys
 from SOWFA.postProcessing.averaging import read
 import refs
 import matplotlib.pyplot as plt
-data = read( *sys.argv[1:] )
+data = read( *sys.argv[1:], varList='all' )
 
 ref = refs.read()
 
