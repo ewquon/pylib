@@ -79,9 +79,7 @@ defaults = { #{{{
 
 # extract input parameters from SOWFA include files
 params = None
-if len(sys.argv) > 1 and os.path.isfile(sys.argv[1]):
-    params,comments = SOWFA.include.read( sys.argv[1], verbose=verbose )
-elif os.path.isfile('setUp'):
+if os.path.isfile('setUp'):
     params,comments = SOWFA.include.read( 'setUp', verbose=verbose )
 elif os.path.isfile('0.original/include/initialConditions'):
     params,comments = SOWFA.include.read( '0.original/include/initialConditions', verbose=verbose )
@@ -176,17 +174,18 @@ print ''
 #
 # update training database (csv file)
 #
-def writeDB(f,var):#{{{
+def writeDB(f,var,delim=''):#{{{
     val = globals()[var]
     if isinstance(val,str):
-        f.write('"{:s}",'.format(val))
+        f.write('{:s}"{:s}"'.format(delim,val))
     else:
-        f.write('{:g},'.format(val)) #}}}
+        f.write('{:s}{:g}'.format(delim,val)) #}}}
 DBexists = os.path.isfile(DBpath) and os.path.getsize(DBpath) > 0
 with open(DBpath,'a') as f:
     if not DBexists: # write header
         f.write( ','.join(inputVars+outputVars) + '\n' )
-    for v in inputVars: writeDB(f,v)
-    for v in outputVars: writeDB(f,v)
+    writeDB(f,inputVars[0])
+    for v in inputVars[1:]: writeDB(f,v,delim=',')
+    for v in outputVars: writeDB(f,v,delim=',')
     f.write('\n')
 print 'Appended training data to',DBpath
