@@ -1,4 +1,4 @@
-#!/usr/local/bin/python
+#!/usr/bin/env python
 #
 # for creating symlinks to output from the OpenFOAM sample utility
 # expected directory structure:
