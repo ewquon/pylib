@@ -138,7 +138,9 @@ g = ref.g
 dTdz_inv, dTdz_upper = data.calcTGradients(zi=zInversion)
 
 # - shear, veer from mean wind
-shearCoeff = data.calcShear( heights=[Hhub/4,Hhub/2,Hhub], zref=Hhub, Uref=URef, verbose=verbose )
+#   note: use horizontal velocities at cell centers near the specified heights to estimate shear
+#         to avoid introducing interpolation errors
+shearCoeff = data.calcShear( heights=[Hhub/4,Hhub/2,Hhub], zref=Hhub, Uref=URef, interp=False, verbose=verbose )
 veerAngle = data.calcVeer( zhub=Hhub, D=D, verbose=verbose )
 
 # - turbulence level
