@@ -40,6 +40,8 @@ extNames = []
 for timestep_dir in dirlist:
     print 'Processing', timestep_dir
     for f in [ f for f in os.listdir(timestep_dir) if os.path.isfile(os.path.join(timestep_dir,f)) ]:
+        if f.startswith('.'):
+            continue
         fsplit = f.split('.')
         fbasename = '.'.join(fsplit[0:-1])
         ext = fsplit[-1]
@@ -47,7 +49,8 @@ for timestep_dir in dirlist:
         var = fbasesplit[0]
         name = '_'.join(fbasesplit[1:])
         print ' ',f,'( name=',name,' var=',var,' ext=',ext,')'
-        if name=='': name = 'timeSeries'
+        if name=='':
+            name = 'timeSeries'
         if not name in sampleNames:
             sampleNames.append(name)
             if not os.path.exists(name): os.makedirs(name)
@@ -70,12 +73,14 @@ for sample in sampleNames:
             dname = dirlist[idx]#.split()
             if sample=='timeSeries':
                 src = os.path.join( os.getcwd(), dname, var+'.'+ext )
-                dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[idx]),extNew)
+                #dest = sample + os.sep + '%s_%s.%s' % (var,tname(timesteps[idx]),extNew)
+                dest = sample + os.sep + '%s_%s.%s' % (var,i,extNew)
             else:
                 #src = os.path.join( os.getcwd(), dname, sample+'_'+var+'.'+ext )
                 # result, e.g.: /Users/equon/wndpltdesign/inflow/5mps_ab/postProcessing/surfaces/9000/slice_cross_stream_U.vtk
                 src = os.path.join( os.getcwd(), dname, var+'_'+sample+'.'+ext )
-                dest = sample + os.sep + '%s_%s.%s'%(var,tname(timesteps[idx]),extNew)
+                #dest = sample + os.sep + '%s_%s.%s' % (var,tname(timesteps[idx]),extNew)
+                dest = sample + os.sep + '%s_%s.%s' % (var,i,extNew)
             print dest,'-->',src
             try:
                 os.symlink(src,dest)
