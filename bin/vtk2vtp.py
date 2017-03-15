@@ -5,7 +5,7 @@ import os
 
 import vtk
 
-def vtk2vtp(inputFile, outputFile):
+def vtk2vtp(inputFile, outputFile, verbose=True):
     """Convert legacy VTK file to new VTK Polygonal Data format
 
     Note: binary files written on one system may not be readable on
@@ -23,6 +23,9 @@ def vtk2vtp(inputFile, outputFile):
     #writer.SetFileTypeToBinary()
     writer.SetInputData(reader.GetOutput())
     writer.Update()
+
+    if verbose:
+        print 'Wrote',outputFile
 
 #=======================================================================
 if __name__ == '__main__':
