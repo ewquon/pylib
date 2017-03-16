@@ -38,5 +38,5 @@ if __name__ == '__main__':
             print 'Skipping',vtkfile
             continue
 
-        vtk2vtp(vtkfile, vtkfile[:-4]+'.vtp')
+        vtk2vtp(vtkfile, vtkfile[:-4]+'.vtp', verbose=False)
 
