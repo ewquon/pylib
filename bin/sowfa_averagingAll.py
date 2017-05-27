@@ -38,26 +38,61 @@ for i,h in enumerate(heights):
 
 
 #------------------------------------------------------------------------------
-fig0,ax0 = plt.subplots(ncols=2)
+fig00,ax00 = plt.subplots(ncols=2)
 
-ax0[0].plot( data.U_mean[-1,:], data.hLevelsCell, label=r'$U$' )
-ax0[0].plot( data.V_mean[-1,:], data.hLevelsCell, label=r'$V$' )
-ax0[0].plot( data.W_mean[-1,:], data.hLevelsCell, label=r'$W$' )
+ax00[0].plot( data.U_mean[-1,:], data.hLevelsCell, label=r'$U$' )
+ax00[0].plot( data.V_mean[-1,:], data.hLevelsCell, label=r'$V$' )
+ax00[0].plot( data.W_mean[-1,:], data.hLevelsCell, label=r'$W$' )
 if ref:
     try:
         z = data.hLevelsCell
         refprofile = ref.Uref * (z/ref.zref)**ref.shear
-    except NameError: pass
-    ax0[0].plot( refprofile, z, 'k--', lw=2, label='input' )
-ax0[0].set_xlabel('Velocity (m/s)')
-ax0[0].set_ylabel('Height (m)')
-ax0[0].legend(loc='best')
+        ax00[0].plot( refprofile, z, 'k--', lw=2, label='input' )
+    except (NameError,TypeError): pass
+ax00[0].set_xlabel('Velocity (m/s)')
+ax00[0].set_ylabel('Height (m)')
+ax00[0].legend(loc='best')
 
-ax0[1].plot( data.T_mean[-1,:], data.hLevelsCell )
-ax0[1].set_xlabel('Temperature (K)')
+ax00[1].plot( data.T_mean[-1,:], data.hLevelsCell )
+ax00[1].set_xlabel('Temperature (K)')
+
+fig00.suptitle('Resolved Mean Quantities')
+fig00.savefig('Profiles_Mean.png')
+
+#------------------------------------------------------------------------------
+fig0,ax0 = plt.subplots(ncols=2)
+
+windMag = np.sqrt( data.U_mean[-1,:]**2 + data.V_mean[-1,:]**2 )
+windDir = np.arctan2( -data.U_mean[-1,:], -data.V_mean[-1,:] )*180.0/np.pi
+
+ax0[0].plot( windMag, data.hLevelsCell, label=r'$U$' )
+if ref:
+    try:
+        z = data.hLevelsCell
+        refprofile = ref.Uref * (z/ref.zref)**ref.shear
+        ax0[0].plot( refprofile, z, 'k--', lw=2, label='input' )
+    except (NameError,TypeError): pass
+ax0[0].set_xlabel('Horizontal Velocity (m/s)')
+ax0[0].set_ylabel('Height (m)')
+#ax0[0].legend(loc='best')
+
+ax0[1].plot( windDir, data.hLevelsCell )
+ax0[1].set_xlabel('Direction (deg)')
+
+if ref:
+    try:
+        z0 = ref.zref - ref.D/2
+        z1 = ref.zref + ref.D/2
+        dir0 = np.interp(z0,data.hLevelsCell,windDir)
+        dir1 = np.interp(z1,data.hLevelsCell,windDir)
+        dirHH = np.interp(ref.zref,data.hLevelsCell,windDir)
+        ax0[1].axhline(z0,linestyle='-',color='0.5')
+        ax0[1].axhline(z1,linestyle='-',color='0.5')
+        ax0[1].annotate(r' $\Delta = {:.1f}^\circ$'.format(np.abs(dir1-dir0)),(dirHH,ref.zref))
+    except NameError: pass
 
 fig0.suptitle('Resolved Mean Quantities')
-fig0.savefig('Profiles_Mean.png')
+fig0.savefig('Profiles_MeanUdir.png')
 
 #------------------------------------------------------------------------------
 fig1,ax1 = plt.subplots(ncols=2)
