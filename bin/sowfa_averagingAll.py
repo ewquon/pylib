@@ -91,6 +91,15 @@ if ref:
         ax0[1].annotate(r' $\Delta = {:.1f}^\circ$'.format(np.abs(dir1-dir0)),(dirHH,ref.zref))
     except NameError: pass
 
+    try:
+        shearCoeff = data.calcShear(heights=[ref.zref/4,ref.zref/2,ref.zref],
+                                    zref=ref.zref,
+                                    Uref=ref.Uref,
+                                    interp=True,
+                                    verbose=True )
+        ax0[0].annotate('shear = {:.4f}'.format(shearCoeff),(ref.Uref,ref.zref))
+    except NameError: pass
+
 fig0.suptitle('Resolved Mean Quantities')
 fig0.savefig('Profiles_MeanUdir.png')
 
