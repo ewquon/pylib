@@ -56,7 +56,11 @@ ax00[0].legend(loc='best')
 ax00[1].plot( data.T_mean[-1,:], data.hLevelsCell )
 ax00[1].set_xlabel('Temperature (K)')
 
-fig00.suptitle('Resolved Mean Quantities')
+titlestr = 'Resolved Mean Quantities'
+if ref:
+    try: titlestr += ' ('+ref.name+')'
+    except NameError: pass
+fig00.suptitle(titlestr)
 fig00.savefig('Profiles_Mean.png')
 
 #------------------------------------------------------------------------------
@@ -100,7 +104,11 @@ if ref:
         ax0[0].annotate('shear = {:.4f}'.format(shearCoeff),(ref.Uref,ref.zref))
     except NameError: pass
 
-fig0.suptitle('Resolved Mean Quantities')
+titlestr = 'Resolved Mean Quantities, wind direction'
+if ref:
+    try: titlestr += ' ('+ref.name+')'
+    except NameError: pass
+fig0.suptitle(titlestr)
 fig0.savefig('Profiles_MeanUdir.png')
 
 #------------------------------------------------------------------------------
@@ -119,7 +127,11 @@ ax1[1].plot( data.vw_mean[-1,:], data.hLevelsCell, label=r"$<v'w'>$" )
 ax1[1].set_xlabel('Shear stresses (m^2/s^2)')
 ax1[1].legend(loc='best')
 
-fig1.suptitle('Resolved Fluctuating Quantities')
+titlestr = 'Resolved Fluctuating Quantities'
+if ref:
+    try: titlestr += ' ('+ref.name+')'
+    except NameError: pass
+fig1.suptitle(titlestr)
 fig1.savefig('Profiles_Fluc.png')
 
 #------------------------------------------------------------------------------
@@ -138,7 +150,11 @@ ax2[1].plot( data.R23_mean[-1,:], data.hLevelsCell, label=r"$R_{23}$" )
 ax2[1].set_xlabel('Shear stresses (m^2/s^2)')
 ax2[1].legend(loc='best')
 
-fig2.suptitle('Sub-Filter Scale Quantities')
+titlestr = 'Sub-Filter Scale Quantities'
+if ref:
+    try: titlestr += ' ('+ref.name+')'
+    except NameError: pass
+fig2.suptitle(titlestr)
 fig2.savefig('Profiles_SFS.png')
 
 #==========

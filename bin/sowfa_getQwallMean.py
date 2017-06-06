@@ -14,6 +14,7 @@ ref = refs.read({'rho':1.2, 'Cp':1000.0})
 t = []
 qwMean = []
 for fname in sys.argv[1:]:
+    print 'Processing',fname
     with open(fname,'r') as f:
         for line in f:
             if line.startswith('Time ='):
