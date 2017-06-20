@@ -19,11 +19,17 @@ tavg,TIx_hist,TIy_hist,TIz_hist,TIdir_hist,TIxyz_hist,TKE_hist = data.calcTI_his
 for ih,z in enumerate(heights):
     plt.plot( tavg, TIdir_hist[:,ih], label='z={:.1f}'.format(z) )
     fname = 'TIhist_z{:.1f}.csv'.format(z)
-    np.savetxt( fname, np.vstack((tavg,TIdir_hist[:,ih])).T, delimiter=',', header='Time,TI' )
-    print 'wrote',fname
+    try:
+        np.savetxt( fname, np.vstack((tavg,TIdir_hist[:,ih])).T, delimiter=',', header='Time,TI' )
+        print 'wrote',fname
+    except IOError:
+        print 'Note:',fname,'was not written'
 
 plt.legend(loc='best')
-plt.savefig('TIhist.png')
+try:
+    plt.savefig('TIhist.png')
+except IOError:
+    print 'Note: TIhist.png was not written'
 
 #==========
 plt.show()
@@ -61,7 +67,10 @@ if ref:
     try: titlestr += ' ('+ref.name+')'
     except NameError: pass
 fig00.suptitle(titlestr)
-fig00.savefig('Profiles_Mean.png')
+try:
+    fig00.savefig('Profiles_Mean.png')
+except IOError:
+    print 'Note: Profiles_Mean.png not written'
 
 #------------------------------------------------------------------------------
 fig0,ax0 = plt.subplots(ncols=2)
@@ -109,7 +118,10 @@ if ref:
     try: titlestr += ' ('+ref.name+')'
     except NameError: pass
 fig0.suptitle(titlestr)
-fig0.savefig('Profiles_MeanUdir.png')
+try:
+    fig0.savefig('Profiles_MeanUdir.png')
+except IOError:
+    print 'Note: Profiles_MeanUdir.png not written'
 
 #------------------------------------------------------------------------------
 fig1,ax1 = plt.subplots(ncols=2)
@@ -132,7 +144,10 @@ if ref:
     try: titlestr += ' ('+ref.name+')'
     except NameError: pass
 fig1.suptitle(titlestr)
-fig1.savefig('Profiles_Fluc.png')
+try:
+    fig1.savefig('Profiles_Fluc.png')
+except IOError:
+    print 'Note: Profiles_Fluc.png not written'
 
 #------------------------------------------------------------------------------
 fig2,ax2 = plt.subplots(ncols=2)
@@ -155,33 +170,39 @@ if ref:
     try: titlestr += ' ('+ref.name+')'
     except NameError: pass
 fig2.suptitle(titlestr)
-fig2.savefig('Profiles_SFS.png')
+try:
+    fig2.savefig('Profiles_SFS.png')
+except IOError:
+    print 'Note: Profiles_SFS.png not written'
 
 #==========
 plt.show()
 #==========
 
 fname = 'averagingProfiles.csv'
-np.savetxt( fname,
-        np.vstack((
-            data.hLevelsCell,
-            data.U_mean[-1,:],
-            data.V_mean[-1,:],
-            data.W_mean[-1,:],
-            data.T_mean[-1,:],
-            data.uu_mean[-1,:],
-            data.vv_mean[-1,:],
-            data.ww_mean[-1,:],
-            data.uv_mean[-1,:],
-            data.uw_mean[-1,:],
-            data.vw_mean[-1,:],
-            data.R11_mean[-1,:],
-            data.R22_mean[-1,:],
-            data.R33_mean[-1,:],
-            data.R12_mean[-1,:],
-            data.R13_mean[-1,:],
-            data.R23_mean[-1,:]
-            )).T,
-        header='z,U,V,W,T,uu,vv,ww,uv,uw,vw,R11,R22,R33,R12,R13,R23',
-        delimiter=',' )
-print 'wrote',fname
+try:
+    np.savetxt( fname,
+            np.vstack((
+                data.hLevelsCell,
+                data.U_mean[-1,:],
+                data.V_mean[-1,:],
+                data.W_mean[-1,:],
+                data.T_mean[-1,:],
+                data.uu_mean[-1,:],
+                data.vv_mean[-1,:],
+                data.ww_mean[-1,:],
+                data.uv_mean[-1,:],
+                data.uw_mean[-1,:],
+                data.vw_mean[-1,:],
+                data.R11_mean[-1,:],
+                data.R22_mean[-1,:],
+                data.R33_mean[-1,:],
+                data.R12_mean[-1,:],
+                data.R13_mean[-1,:],
+                data.R23_mean[-1,:]
+                )).T,
+            header='z,U,V,W,T,uu,vv,ww,uv,uw,vw,R11,R22,R33,R12,R13,R23',
+            delimiter=',' )
+    print 'wrote',fname
+except IOError:
+    print 'Note:',fname,'was not written'
