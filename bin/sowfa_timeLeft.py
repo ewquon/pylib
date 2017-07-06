@@ -58,6 +58,13 @@ print 'ESTIMATED TOTAL TIME:',myutils.smartTime(totalTime)
 
 remainingTime = totalTime - elapsedTime
 print 'Remaining time:',myutils.smartTime(remainingTime)
+
+timeStepsLeft = (endTime-curTime) / timestep_size[-1]
+remainingTimeOpt = timeStepsLeft * ctime_per_step[-1]
+print 'Remaining time (based on clocktime for last timestep):',myutils.smartTime(remainingTimeOpt)
+print ' ',timeStepsLeft,'time steps left'
+print '  ~',ctime_per_step[-1],'clock time per step'
+
 print time.strftime('Current date/time is %x %X')
 
 if makeplots:
@@ -66,9 +73,12 @@ if makeplots:
     plt.xlabel('iteration')
     plt.ylabel('Clock time / step [s]')
 
-    plt.figure()
-    plt.plot(timestep_size)
-    plt.xlabel('iteration')
-    plt.ylabel('simulated timestep [s]')
+    if (np.max(timestep_size)-np.min(timestep_size)) > 1e-6:
+        plt.figure()
+        plt.plot(timestep_size)
+        plt.xlabel('iteration')
+        plt.ylabel('simulated timestep [s]')
+    else:
+        print 'Skipping timestep plot for constant dt=',np.mean(timestep_size)
 
     plt.show()
