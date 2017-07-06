@@ -40,9 +40,13 @@ class binaryfile:
         else: return struct.unpack('{:d}l'.format(N),self.f.read(N*8))[0:N] #long
     def read_float(self,N=1,dtype=float):
         if N==1: return dtype( struct.unpack('f',self.f.read(4))[0] )
-        else: return dtype( struct.unpack('{:d}f'.format(N),self.f.read(N*4))[0:N] )
+        else: return [ dtype(val) for val in struct.unpack('{:d}f'.format(N),self.f.read(N*4))[0:N] ]
     def read_double(self,N=1):
         if N==1: return struct.unpack('d',self.f.read(8))[0]
         else: return struct.unpack('{:d}d'.format(N),self.f.read(N*8))[0:N]
+    def read_real4(self,N=1,dtype=float):
+        return read_float(N,dtype)
+    def read_real8(self,N=1):
+        return read_double(N)
 
 
