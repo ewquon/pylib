@@ -1,7 +1,7 @@
-#!/usr/local/bin/python
+#!/usr/bin/env python
 #
 # TurbSim data processing module (binary AeroDyn .bts format)
-# written by Eliot Quon (eliot.quon@nrel.gov)
+# written by Eliot Quon (eliot.quon@nrel.gov) - 2016-06-01
 #
 import sys,os
 import numpy as np
