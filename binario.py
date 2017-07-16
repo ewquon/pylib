@@ -1,6 +1,7 @@
 #!/usr/local/bin/python
 # module for handling binary file I/O
 import struct
+import numpy as np
 
 class binaryfile:
     def __init__(self,path):
@@ -44,9 +45,9 @@ class binaryfile:
     def read_double(self,N=1):
         if N==1: return struct.unpack('d',self.f.read(8))[0]
         else: return struct.unpack('{:d}d'.format(N),self.f.read(N*8))[0:N]
-    def read_real4(self,N=1,dtype=float):
-        return read_float(N,dtype)
+    def read_real4(self,N=1):
+        return read_float(N,dtype=np.float32)
     def read_real8(self,N=1):
-        return read_double(N)
+        return read_double(N,dtype=np.float64)
 
 
