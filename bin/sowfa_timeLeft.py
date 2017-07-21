@@ -38,8 +38,10 @@ try:
             elif line.startswith('ExecutionTime ='):
                 elapsedTime = float(line.split()[6])
                 clockTimes.append(elapsedTime)
-except IOError:
+except NameError:
     sys.exit('USAGE: '+sys.argv[0]+' log_file')
+except IOError:
+    sys.exit('Problem reading '+logfile)
 
 completed = (curTime-startTime) / (endTime-startTime)
 

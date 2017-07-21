@@ -78,6 +78,11 @@ fig0,ax0 = plt.subplots(ncols=2)
 windMag = np.sqrt( data.U_mean[-1,:]**2 + data.V_mean[-1,:]**2 )
 windDir = np.arctan2( -data.U_mean[-1,:], -data.V_mean[-1,:] )*180.0/np.pi
 
+meanWindDir = np.mean(windDir)
+if meanWindDir < 0:
+    meanWindDir += 360.0
+    windDir += 360.0
+
 ax0[0].plot( windMag, data.hLevelsCell, label=r'$U$' )
 if ref:
     try:
@@ -91,6 +96,9 @@ ax0[0].set_ylabel('Height (m)')
 
 ax0[1].plot( windDir, data.hLevelsCell )
 ax0[1].set_xlabel('Direction (deg)')
+cur_xlim = ax0[1].get_xlim()
+xlim = [ min(cur_xlim[0],np.round(meanWindDir-1.0)), max(cur_xlim[1],np.round(meanWindDir+1.0)) ]
+ax0[1].set_xlim(xlim)
 
 if ref:
     try:
