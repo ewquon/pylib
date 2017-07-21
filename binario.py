@@ -46,8 +46,8 @@ class binaryfile:
         if N==1: return struct.unpack('d',self.f.read(8))[0]
         else: return struct.unpack('{:d}d'.format(N),self.f.read(N*8))[0:N]
     def read_real4(self,N=1):
-        return read_float(N,dtype=np.float32)
+        return self.read_float(N,dtype=np.float32)
     def read_real8(self,N=1):
-        return read_double(N,dtype=np.float64)
+        return self.read_double(N,dtype=np.float64)
 
 
