@@ -37,7 +37,7 @@ except IOError:
     sys.exit('Problem reading '+logfile)
 
 
-np.savetxt('uStarMeanHist.dat',np.vstack((simTimes,uStarMean)).T,fmt='%.4g',delimiter='\t')
+np.savetxt('uStarMeanHist.dat',np.vstack((simTimes,uStarMean)).T,fmt='%g',delimiter='\t')
 
 
 if makeplots:
