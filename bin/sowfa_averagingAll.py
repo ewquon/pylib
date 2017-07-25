@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import sys
 from SOWFA.postProcessing.averaging import read
-import refs
 import matplotlib.pyplot as plt
 import numpy as np
+import refs
 
 heights = [90.]
 tavg_window = 600.
