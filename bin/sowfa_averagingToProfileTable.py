@@ -5,9 +5,10 @@ import numpy as np
 
 if len(sys.argv) < 3:
     sys.exit('USAGE: '+sys.argv[0]+' [path/to/averagingProfiles.csv] [constant/initProfileTable]')
+fname = sys.argv[1]
 
 # header: z,U,V,W,T,uu,vv,ww,uv,uw,vw,R11,R22,R33,R12,R13,R23
-tableData = np.loadtxt(sys.argv[1],delimiter=',',skiprows=1)
+tableData = np.loadtxt(fname,delimiter=',',skiprows=1)
 z = tableData[:,0]
 U = tableData[:,1]
 V = tableData[:,2]
@@ -15,6 +16,7 @@ W = tableData[:,3]
 T = tableData[:,4]
 
 with open(sys.argv[2],'w') as f:
+    f.write('// '+fname+'\n')
     f.write('profileTable\n')
     f.write('(\n')
     f.write('//  z\tU\tV\tT\n')
