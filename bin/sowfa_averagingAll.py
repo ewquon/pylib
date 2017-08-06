@@ -44,6 +44,9 @@ for i,h in enumerate(heights):
 
 
 #------------------------------------------------------------------------------
+#
+# Velocity and Temperature Profiles 
+#
 fig00,ax00 = plt.subplots(ncols=2)
 
 ax00[0].plot( data.U_mean[-1,:], data.hLevelsCell, label=r'$U$' )
@@ -73,6 +76,9 @@ except IOError:
     print 'Note: Profiles_Mean.png not written'
 
 #------------------------------------------------------------------------------
+#
+# Wind speed and direction
+#
 fig0,ax0 = plt.subplots(ncols=2)
 
 windMag = np.sqrt( data.U_mean[-1,:]**2 + data.V_mean[-1,:]**2 )
@@ -121,7 +127,7 @@ if ref:
         ax0[0].annotate('shear = {:.4f}'.format(shearCoeff),(ref.Uref,ref.zref))
     except NameError: pass
 
-titlestr = 'Resolved Mean Quantities, wind direction'
+titlestr = 'Resolved Mean Wind Profiles'
 if ref:
     try: titlestr += ' ('+ref.name+')'
     except NameError: pass
@@ -132,19 +138,25 @@ except IOError:
     print 'Note: Profiles_MeanUdir.png not written'
 
 #------------------------------------------------------------------------------
+#
+# Resolved Fluctuating Quantities
+#
 fig1,ax1 = plt.subplots(ncols=2)
+
+data.getVarsIfNeeded('Tw_mean')
 
 ax1[0].plot( data.uu_mean[-1,:], data.hLevelsCell, label=r"$<u'u'>$" )
 ax1[0].plot( data.vv_mean[-1,:], data.hLevelsCell, label=r"$<v'v'>$" )
 ax1[0].plot( data.ww_mean[-1,:], data.hLevelsCell, label=r"$<w'w'>$" )
-ax1[0].set_xlabel('Normal stresses (m^2/s^2)')
+ax1[0].set_xlabel('Variance (m^2/s^2)')
 ax1[0].set_ylabel('Height (m)')
 ax1[0].legend(loc='best')
 
 ax1[1].plot( data.uv_mean[-1,:], data.hLevelsCell, label=r"$<u'v'>$" )
 ax1[1].plot( data.uw_mean[-1,:], data.hLevelsCell, label=r"$<u'w'>$" )
 ax1[1].plot( data.vw_mean[-1,:], data.hLevelsCell, label=r"$<v'w'>$" )
-ax1[1].set_xlabel('Shear stresses (m^2/s^2)')
+ax1[1].plot( data.Tw_mean[-1,:], data.hLevelsCell, label=r"$<T'w'>$" )
+ax1[1].set_xlabel('Covariance (m^2/s^2)')
 ax1[1].legend(loc='best')
 
 titlestr = 'Resolved Fluctuating Quantities'
@@ -158,6 +170,9 @@ except IOError:
     print 'Note: Profiles_Fluc.png not written'
 
 #------------------------------------------------------------------------------
+#
+# Modeled SFS Quantities
+#
 fig2,ax2 = plt.subplots(ncols=2)
 
 ax2[0].plot( data.R11_mean[-1,:], data.hLevelsCell, label=r"$R_{11}$" )
