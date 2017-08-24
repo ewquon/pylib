@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import refs
 
-heights = [90.]
+heights = [90.,200, 400, 600, 800]
 tavg_window = 600.
 dt = 1.0
 SFS = True
@@ -25,7 +25,7 @@ for ih,z in enumerate(heights):
     except IOError:
         print 'Note:',fname,'was not written'
 
-plt.legend(loc='best')
+plt.legend(loc='best',fontsize='small')
 try:
     plt.savefig('TIhist.png')
 except IOError:
