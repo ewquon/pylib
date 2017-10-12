@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import sys
 import shlex #for smart splitting to preserve enquoted text
 import matplotlib.pyplot as plt
