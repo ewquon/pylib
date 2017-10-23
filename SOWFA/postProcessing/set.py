@@ -2,14 +2,32 @@
 import sys,os
 import numpy as np
 
+def pretty_list(strlist,indent=2,sep='\t',width=80):
+    """For formatting long lists of strings of arbitrary length
+    """
+    sep = sep.expandtabs()
+    max_item_len = max([len(s) for s in strlist])
+    items_per_line = (width - (indent+max_item_len)) / (len(sep)+max_item_len) + 1
+    Nlines = len(strlist) / items_per_line
+    extraline = (len(strlist) % items_per_line) > 0
+    fmtstr = '{{:{:d}s}}'.format(max_item_len)
+    strlist = [ fmtstr.format(s) for s in strlist ] # pad strings so that they're all the same length
+    finalline = ''
+    for line in range(Nlines):
+        ist = line*items_per_line
+        finalline += indent*' ' + sep.join(strlist[ist:ist+items_per_line]) + '\n'
+    if extraline:
+        finalline += indent*' ' + sep.join(strlist[Nlines*items_per_line:]) + '\n'
+    return finalline
+
 class uniform:
-    """ For post-processing simple xyz-style output from uniform (line) set sample
+    """For post-processing simple xyz-style output from uniform (line) set sample
     """
 
     sampleExt = 'xy'
 
     def __init__(self,path='.'):
-        """ Sets timeNames and sampleNames with the time directory and sample names, respectively.
+        """Sets timeNames and sampleNames with the time directory and sample names, respectively.
         Sets t to a numpy array of times
         """
         self.path = path
@@ -58,17 +76,18 @@ class uniform:
             self.sampleNames.append( name )
 
     def __repr__(self):
-        s = 'Read times, t = %s\n' % (self.t) \
-          + 'Sample names :'
-        for name in sorted( self.sampleNames ):
-            s += '\n  %s' % name
+        s = 'Read times from {:s} :\n{:s}\n'.format(self.path,self.t) \
+          + 'Sample names :\n' \
+          + pretty_list(sorted(self.sampleNames))
         return s
 
     def getSample(self,name,field,verbose=True):
-        """ Returns a sampled field with specified name
-        Assumes 'x' is identical for all samples
-        For a scalar field, the output array has shape (N,NX), where NX is the number of spatial samples and N is the length of the time array;
-        for a vector field, the output array has shape (N,NX,3)
+        """Returns a sampled field with the specified field name,
+        assuming 'x' is identical for all samples
+
+        For a scalar field, the output array has shape (N,NX), where NX
+        is the number of spatial samples and N is the length of the time
+        array; for a vector field, the output array has shape (N,NX,3).
         """
         found = False
         suffix = '_' + field
@@ -86,13 +105,12 @@ class uniform:
         ufile = self.path + os.sep + f + '.'+field + '.npy'
         try:
             # read from pre-processed numpy data file
-            #x,U = np.load( savefile )
             x = np.load( xfile )
             U = np.load( ufile )
             self.NX = U.shape[1]
             print 'Data read from',ufile
 
-        except IOError:
+        except IOError: # default operation
 
             # get position of field
             pos = -(len(f) - f.index(suffix))/2
