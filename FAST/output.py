@@ -87,5 +87,52 @@ class FASToutput(object):
 
     def plot(self,outputName,*args,**kwargs):
         data = getattr(self,outputName)
-        plt.plot(self.t, data, *args, **kwargs)
+        Ndata = len(data)
+        Nt = len(self.t)
+        if Ndata == Nt:
+            time = self.t
+        elif Ndata < Nt:
+            Navg = Nt - Ndata
+            time = self.t[Navg/2:-Navg/2]
+        plt.plot(time, data, *args, **kwargs)
+
+
+    def running_mean(self,outputName,Tavg):
+        N = int(Tavg / (self.t[1]-self.t[0]))
+        data = getattr(self,outputName)
+        mean = np.convolve(data, np.ones((N,))/N, mode='valid')
+        newname = outputName + '_mean'
+        setattr(self,newname,mean)
+        print 'Averaged {:s} with {:f} s window (N={:d})'.format(outputName,self.t[N+1]-self.t[0],N)
+        return mean
+
+
+    def low_pass_filtered_mean(self,outputName,fc=np.inf,order=2):
+        # Example: https://gist.github.com/junzis/e06eca03747fc194e322
+        from scipy.signal import butter, lfilter
+        data = getattr(self,outputName)
+        fs = 1./(self.t[1] - self.t[0])
+        cutoff_norm = fc / (0.5*fs) # Wn normalized from 0 to 1, where 1 is the Nyquist frequency
+        b,a = butter(order, cutoff_norm, btype='lowpass', analog=False, output='ba')
+        filtered_data = lfilter(b, a, data)
+        newname = outputName + '_mean'
+        setattr(self,newname,filtered_data)
+        print 'Filtered {:s} with cutoff freq={:f} Hz, order={:d}'.format(outputName,fc,order)
+        return filtered_data
+
+
+    def fluctuations(self,outputName,meanName=None):
+        if meanName is None:
+            meanName = outputName + '_mean'
+            if not hasattr(self,meanName):
+                self.low_pass_filtered_mean(outputName)
+        data = getattr(self,outputName)
+        mean = getattr(self,meanName)
+        if len(data) > len(mean):
+            Navg = len(data) - len(mean)
+            data = data[Navg/2:-Navg/2]
+        fluc = data - mean
+        newname = outputName + '_fluc'
+        setattr(self,newname,fluc)
+        return fluc
 
