@@ -52,6 +52,12 @@ class FASToutput(object):
         self._setAlias('t','Time')
         self._setAlias('P','RotPwr')
         self._setAlias('T','RotThrust','LSShftFxa','LSShftFxs','LSSGagFxa','LSSGagFxs')
+        self._setAlias('rpm','LSSTipVxa')
+        self._setAlias('genspd','HSShftV')
+        self._setAlias('pitch1','PtchPMzc1')
+        self._setAlias('pitch2','PtchPMzc2')
+        self._setAlias('pitch3','PtchPMzc3')
+        self._setAlias('pitch','pitch1')
 
     def _setAlias(self,name,*aliases):
         for alias in aliases:
