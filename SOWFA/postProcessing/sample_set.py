@@ -246,15 +246,18 @@ class SampleCollection(object):
         self.U_mean  = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.V_mean  = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.W_mean  = np.zeros((self.Nloc,self.Ntavg,self.N))
+        self.T_mean  = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.u_fluc  = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.v_fluc  = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.w_fluc  = np.zeros((self.Nloc,self.Ntavg,self.N))
+        self.q_fluc  = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.uu_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.vv_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.ww_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.uv_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.uw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.vw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
+        self.qw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         for iloc in range(self.Nloc):
             for ix in range(self.N):
                 U = uniform_filter( self.data[iloc,:,ix,0], Navg ) # size Nt
@@ -262,7 +265,7 @@ class SampleCollection(object):
                 W = uniform_filter( self.data[iloc,:,ix,2], Navg )
                 up = self.data[iloc,:,ix,0] - U # size Nt
                 vp = self.data[iloc,:,ix,1] - V
-                wp = self.data[iloc,:,ix,0] - W
+                wp = self.data[iloc,:,ix,2] - W
 
                 self.U_mean[iloc,:,ix] = U[avgrange] # size Ntavg
                 self.V_mean[iloc,:,ix] = V[avgrange]
