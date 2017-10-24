@@ -1,6 +1,9 @@
 #!/usr/bin/env python
+import os
 import sys
 import numpy as np
+
+histfile = 'uStarMeanHist.dat'
 
 
 makeplots = False
@@ -36,8 +39,12 @@ except NameError:
 except IOError:
     sys.exit('Problem reading '+logfile)
 
-
-np.savetxt('uStarMeanHist.dat',np.vstack((simTimes,uStarMean)).T,fmt='%g',delimiter='\t')
+if os.path.isfile(histfile):
+    np.savetxt(open(histfile,'a'),np.vstack((simTimes,uStarMean)).T,fmt='%g',delimiter='\t')
+    print 'Appending to',histfile
+else:
+    np.savetxt(open(histfile,'w'),np.vstack((simTimes,uStarMean)).T,fmt='%g',delimiter='\t')
+    print 'Writing new',histfile
 
 
 if makeplots:

@@ -4,6 +4,8 @@ import myutils
 import time
 import numpy as np
 
+log_est_total_time = 'estimated_total_time'
+
 with open('system/controlDict','r') as f:
     for line in f:
 	if line.strip().startswith('application'):
@@ -57,6 +59,9 @@ print 'Average/min/max time per step', \
 
 totalTime = elapsedTime / completed
 print 'ESTIMATED TOTAL TIME:',myutils.smartTime(totalTime)
+if log_est_total_time:
+    with open(log_est_total_time,'a') as f:
+        f.write(time.strftime('%x %X\tsimulated t={:.1f}s, N={:d}\tESTIMATED TOTAL TIME: {:s}\n'.format(curTime,nsteps,myutils.smartTime(totalTime))))
 
 remainingTime = totalTime - elapsedTime
 print 'Remaining time:',myutils.smartTime(remainingTime)
