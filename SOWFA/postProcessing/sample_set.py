@@ -27,6 +27,7 @@ class uniform:
     """
 
     sampleExt = 'xy'
+    timeseriesfile = 'timeseries_info.npz'
 
     def __init__(self,path='.'):
         """Sets timeNames and sampleNames with the time directory and sample names, respectively.
@@ -36,6 +37,7 @@ class uniform:
         self.t = []
         self.timeNames = []
         self.sampleNames = []
+        tsfile = os.path.join(path,self.timeseriesfile)
 
         # get list of times from directory names
         try:
@@ -55,6 +57,15 @@ class uniform:
         self.N = len(self.t)
         if self.N==0: 
             print 'No time directories found in', path
+            # attempt to load time series information if it exists
+            if os.path.isfile(tsfile):
+                npzfile = np.load(tsfile)
+                self.t = npzfile['t']
+                self.dt = npzfile['dt']
+                self.timeNames = npzfile['timeNames']
+                self.sampleNames = npzfile['sampleNames']
+                self.N = len(self.t)
+                print 'Loaded time series information from',tsfile
             return
 
         # sort based on times
@@ -76,6 +87,12 @@ class uniform:
             assert( fsplit[-1] == self.sampleExt )
             name = '.'.join( fsplit[:-1] )
             self.sampleNames.append( name )
+
+        # save time information in case we don't want to move all the unprocessed data
+        np.savez(tsfile,
+                 t=self.t,dt=self.dt,
+                 timeNames=self.timeNames,
+                 sampleNames=self.sampleNames)
 
     def __repr__(self):
         s = 'Read times from {:s} :\n{:s}\n'.format(self.path,self.t) \
