@@ -12,6 +12,8 @@ def read(outputFile,**kwargs):
     return FASToutput(outputFile,**kwargs)
 
 class FASToutput(object):
+    # TODO: override dict instead of generic object
+
     def __init__(self,fname=None,verbose=True):
         # inputs
         self.fname = fname
@@ -26,6 +28,12 @@ class FASToutput(object):
             self._readFASToutput(fname)
             if verbose:
                 self.printStats()
+
+    def __getitem__(self, key):
+        if key in self.outputs:
+            return getattr(self, key)
+        else:
+            raise KeyError('Requested key \'{:s}\' not in {}'.format(key,self.outputs))
 
     def _readFASToutput(self,fname,Nheaderlines=6):
         if self.verbose: print 'Reading header info from',fname
@@ -59,15 +67,20 @@ class FASToutput(object):
         self._setAlias('pitch3','PtchPMzc3')
         self._setAlias('pitch','pitch1')
 
+    def addOutput(self,name,data):
+        self.outputs.append(name)
+        setattr(self,name,data)
+
     def _setAlias(self,name,*aliases):
         for alias in aliases:
             try:
-                getattr(self, alias)
+                data = getattr(self,alias)
             except AttributeError:
                 continue
-            setattr(self, name, getattr(self,alias))
-            if self.verbose: print '  set',name,'-->',alias
-            return
+            else:
+                self.addOutput(name, data)
+                if self.verbose: print '  set',name,'-->',alias
+                return
         if self.verbose: print 'Outputs for alias',name,'do not exist:',aliases
 
     def printStats(self):
@@ -102,7 +115,7 @@ class FASToutput(object):
         data = getattr(self,outputName)
         mean = np.convolve(data, np.ones((N,))/N, mode='valid')
         newname = outputName + '_mean'
-        setattr(self,newname,mean)
+        self.addOutput(newname,mean)
         print 'Averaged {:s} with {:f} s window (N={:d})'.format(outputName,self.t[N+1]-self.t[0],N)
         return mean
 
@@ -116,7 +129,7 @@ class FASToutput(object):
         b,a = butter(order, cutoff_norm, btype='lowpass', analog=False, output='ba')
         filtered_data = lfilter(b, a, data)
         newname = outputName + '_mean'
-        setattr(self,newname,filtered_data)
+        self.addOutput(newname,filtered_data)
         print 'Filtered {:s} with cutoff freq={:f} Hz, order={:d}'.format(outputName,fc,order)
         return filtered_data
 
@@ -133,6 +146,6 @@ class FASToutput(object):
             data = data[Navg/2:-Navg/2]
         fluc = data - mean
         newname = outputName + '_fluc'
-        setattr(self,newname,fluc)
+        self.addOutput(newname,fluc)
         return fluc
 
