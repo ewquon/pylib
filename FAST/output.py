@@ -21,6 +21,7 @@ class FASToutput(object):
         # initialize members
         self.outputs = None
         self.units = None
+        self.output_units = dict()
         self.Noutputs = 0
         self.N = 0
         # read output file
@@ -55,6 +56,7 @@ class FASToutput(object):
         data = np.loadtxt(fname,skiprows=Nheaderlines+2)
         for i,output in enumerate(self.outputs):
             setattr(self,output,data[:,i])
+            self.output_units[output] = self.units[i]
         assert(len(self.Time) == self.N)
         # aliases
         self._setAlias('t','Time')
