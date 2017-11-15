@@ -281,17 +281,18 @@ class SampleCollection(object):
                 self.vw_mean[iloc,:,ix] = uniform_filter( vp*wp, Navg )[avgrange]
 
 
-def calculate_TIdir(self):
-    """Calculates the turbulence intensity in the wind-aligned direction"""
-    Umag = np.sqrt(self.U_mean**2
-                 + self.V_mean**2
-                 + self.W_mean**2)
-    windDir = np.abs(np.arctan2(self.V_mean,self.U_mean))
-    TIdir = self.uu_mean *   np.cos(windDir)**2 \
-          + self.uv_mean * 2*np.sin(windDir)*np.cos(windDir) \
-          + self.vv_mean *   np.sin(windDir)**2
-    self.TIdir = TIdir/Umag
-    return self.TIdir
+    def calculate_TIdir(self):
+        """Calculates the turbulence intensity [%] in the wind-aligned direction
+        """
+        Umag = np.sqrt(self.U_mean**2
+                     + self.V_mean**2
+                     + self.W_mean**2)
+        windDir = np.abs(np.arctan2(self.V_mean,self.U_mean))
+        TIdir = self.uu_mean *   np.cos(windDir)**2 \
+              + self.uv_mean * 2*np.sin(windDir)*np.cos(windDir) \
+              + self.vv_mean *   np.sin(windDir)**2
+        self.TIdir = 100.0*TIdir/Umag
+        return self.TIdir
 
 #===============================================================================
 #===============================================================================
