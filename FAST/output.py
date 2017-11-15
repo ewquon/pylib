@@ -69,9 +69,13 @@ class FASToutput(object):
         self._setAlias('pitch3','PtchPMzc3')
         self._setAlias('pitch','pitch1')
 
-    def addOutput(self,name,data):
-        self.outputs.append(name)
-        setattr(self,name,data)
+    def addOutput(self,name,data,units=None):
+        if name not in self.outputs:
+            self.outputs.append(name)
+            setattr(self,name,data)
+            if units is not None: self.output_units[name] = units
+        else:
+            print 'Output',name,'already exists'
 
     def _setAlias(self,name,*aliases):
         for alias in aliases:
@@ -150,4 +154,12 @@ class FASToutput(object):
         newname = outputName + '_fluc'
         self.addOutput(newname,fluc)
         return fluc
+
+
+    def vector_magnitude(self,outputname,*components):
+        mag_sq = 0.0
+        for comp in components:
+            mag_sq += self[comp]**2
+        units = self.output_units[components[0]]
+        self.addOutput(outputname, mag_sq**0.5, units=units) 
 
