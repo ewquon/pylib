@@ -174,6 +174,13 @@ class uniform:
                             U[it,i] = float( line.split()[pos] )
             print ''
 
+            # sort by x (OpenFOAM output not guaranteed to be in order)
+            reorder = x.argsort()
+            if isVector: 
+                return x[reorder], U[:,reorder,:]
+            else:
+                return x[reorder], U[:,reorder]
+
             print '  saving',ufile
             try:
                 np.save( xfile, x )
@@ -190,15 +197,8 @@ class uniform:
                 print ' ',field+'z min/max : [',np.min(U[:,:,2]),np.max(U[:,:,2]),']'
             else:
                 print ' ',field+' min/max : [',np.min(U[:,:]),np.max(U[:,:]),']'
-        #return x,U
 
-        # sort by x (OpenFOAM output not guaranteed to be in order)
-        reorder = x.argsort()
-        if isVector: 
-            return x[reorder], U[:,reorder,:]
-        else:
-            return x[reorder], U[:,reorder]
-
+        return x,U
 
 
 class SampleCollection(object):
@@ -223,6 +223,11 @@ class SampleCollection(object):
             print 'Sample',iloc,'at',loc
             sampleName = self.formatString.format(int(loc))
             x, Uarray = self.sampledData.getSample(sampleName,'U',verbose=False)
+            # make sure arrays are sorted, for backwards compatibility
+            reorder = x.argsort()
+            x = x[reorder]
+            Uarray = Uarray[:,reorder,:]
+            # save sampled data
             if self.x is None:
                 self.x = x
                 self.N = len(x)
@@ -302,7 +307,6 @@ class SampleCollection(object):
               + self.uv_mean * 2*np.sin(windDir)*np.cos(windDir) \
               + self.vv_mean *   np.sin(windDir)**2
         self.TIdir = 100.0*TIdir/Umag
-        return self.TIdir
 
 #===============================================================================
 #===============================================================================
