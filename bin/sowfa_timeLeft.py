@@ -16,10 +16,13 @@ with open('system/controlDict','r') as f:
             endTime = float(line.split()[1][:-1])
 
 makeplots = False
+writehist = False
 for arg in sys.argv[1:]:
     if arg.lower().strip() == '-plot':
         import matplotlib.pyplot as plt
         makeplots = True
+    elif arg.lower().strip() == '-write':
+        writehist = True
     else:
         logfile = arg
 
@@ -27,6 +30,7 @@ nsteps = 0
 startTime = -1
 simTimes = []
 clockTimes = []
+CourantMax = []
 try:
     with open(logfile,'r') as f:
         for line in f:
@@ -40,6 +44,9 @@ try:
             elif line.startswith('ExecutionTime ='):
                 elapsedTime = float(line.split()[6])
                 clockTimes.append(elapsedTime)
+            elif line.startswith('Courant Number'):
+                cflmax = float(line.split()[-1])
+                CourantMax.append(cflmax)
 except NameError:
     sys.exit('USAGE: '+sys.argv[0]+' log_file')
 except IOError:
@@ -72,7 +79,18 @@ print 'Remaining time (based on clocktime for last timestep):',myutils.smartTime
 print ' ',timeStepsLeft,'time steps left'
 print '  ~',ctime_per_step[-1],'clock time per step'
 
+print 'Average/min/max maximum Courant number per step', \
+    np.mean(CourantMax), np.min(CourantMax), np.max(CourantMax)
+
 print time.strftime('Current date/time is %x %X')
+
+if writehist:
+    N = min(len(simTimes),len(ctime_per_step))
+    with open(logfile+'.timing','w') as f:
+        f.write(time.strftime('# Current system time: %x %X\n'))
+        f.write('# step  simulation_time  wallclock_time_per_step\n')
+        for i in range(N):
+            f.write('{:d} {:f} {:f}\n'.format(i+1,simTimes[i],ctime_per_step[i]))
 
 if makeplots:
     plt.figure()
