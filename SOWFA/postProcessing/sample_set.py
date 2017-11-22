@@ -127,6 +127,10 @@ class uniform:
             x = np.load( xfile )
             U = np.load( ufile )
             self.NX = U.shape[1]
+            if len(U.shape)==3:
+                isVector = True
+            else:
+                isVector = False
             print 'Data read from',ufile
 
         except IOError: # default operation
@@ -180,15 +184,21 @@ class uniform:
         # done reading sample
         if verbose:
             print '  x min/max : [',np.min(x),np.max(x),']'
-            if len(U.shape)==3:
-                #if isVector:
+            if isVector:
                 print ' ',field+'x min/max : [',np.min(U[:,:,0]),np.max(U[:,:,0]),']'
                 print ' ',field+'y min/max : [',np.min(U[:,:,1]),np.max(U[:,:,1]),']'
                 print ' ',field+'z min/max : [',np.min(U[:,:,2]),np.max(U[:,:,2]),']'
             else:
                 print ' ',field+' min/max : [',np.min(U[:,:]),np.max(U[:,:]),']'
+        #return x,U
 
-        return x,U
+        # sort by x (OpenFOAM output not guaranteed to be in order)
+        reorder = x.argsort()
+        if isVector: 
+            return x[reorder], U[:,reorder,:]
+        else:
+            return x[reorder], U[:,reorder]
+
 
 
 class SampleCollection(object):
