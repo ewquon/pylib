@@ -204,9 +204,10 @@ class uniform:
 class SampleCollection(object):
 
     def __init__(self,sampleLocations,sampledData,formatString):
-        self.sampleLocations = sampleLocations
-        self.sampledData = sampledData
-        self.formatString = formatString
+        self.sampleLocations = sampleLocations  # a list of integer sampling locations
+        self.sampledData = sampledData  # a list of sample objects
+        self.formatString = formatString  # for constructing the data file name
+
         self.Nloc = len(sampleLocations)
         self.Nt = sampledData.N
         self.t = sampledData.t
