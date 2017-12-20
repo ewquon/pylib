@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function
 import sys,os
 import numpy as np
 from scipy.ndimage.filters import uniform_filter
@@ -43,7 +44,7 @@ class uniform:
         try:
             dirs = next(os.walk(path))[1]
         except StopIteration:
-            print 'Path',path,'not found'
+            print('Path',path,'not found')
             return
         times = []
         timeNames = []
@@ -56,7 +57,7 @@ class uniform:
         self.t = np.array(times)
         self.N = len(self.t)
         if self.N==0: 
-            print 'No time directories found in', path
+            print('No time directories found in',path)
             # attempt to load time series information if it exists
             if os.path.isfile(tsfile):
                 npzfile = np.load(tsfile)
@@ -65,7 +66,7 @@ class uniform:
                 self.timeNames = npzfile['timeNames']
                 self.sampleNames = npzfile['sampleNames']
                 self.N = len(self.t)
-                print 'Loaded time series information from',tsfile
+                print('Loaded time series information from',tsfile)
             return
 
         # sort based on times
@@ -74,7 +75,7 @@ class uniform:
         self.timeNames = [ timeNames[i] for i in order ]
         dt = np.diff(self.t)
         if np.max(dt)-np.min(dt) > 1e-14:
-            print 'Warning: gaps detected in sampling times'
+            print('Warning: gaps detected in sampling times')
             self.dt = dt
         else:
             self.dt = dt[0]
@@ -115,7 +116,7 @@ class uniform:
                 found = True
                 break
         if not found:
-            print 'Sample',name,'with field',field,'not found'
+            print('Sample',name,'with field',field,'not found')
             return
 
         fname = f + '.' + self.sampleExt
@@ -131,7 +132,7 @@ class uniform:
                 isVector = True
             else:
                 isVector = False
-            print 'Data read from',ufile
+            print('Data read from',ufile)
 
         except IOError: # default operation
 
@@ -144,7 +145,7 @@ class uniform:
                 for i,_ in enumerate(f): pass
             self.NX = i+1
 
-            print 'Found set in',fname,': field',field,'at position',pos,'with',self.NX,'samples'
+            print('Found set in {} : field {} at position {} with {} samples'.format(fname,field,pos,self.NX))
 
             x = np.zeros(self.NX)
             with open(testfile, 'r') as f:
@@ -172,7 +173,7 @@ class uniform:
                     else:
                         for i,line in enumerate(f):
                             U[it,i] = float( line.split()[pos] )
-            print ''
+            print('')
 
             # sort by x (OpenFOAM output not guaranteed to be in order)
             reorder = x.argsort()
@@ -181,22 +182,22 @@ class uniform:
             else:
                 return x[reorder], U[:,reorder]
 
-            print '  saving',ufile
+            print('  saving',ufile)
             try:
                 np.save( xfile, x )
                 np.save( ufile, U )
             except IOError as err:
-                print '  warning, unable to write out npy file:',err
+                print('  warning, unable to write out npy file:',err)
 
         # done reading sample
         if verbose:
-            print '  x min/max : [',np.min(x),np.max(x),']'
+            print('  x min/max : [{},{}]'.format(np.min(x),np.max(x)))
             if isVector:
-                print ' ',field+'x min/max : [',np.min(U[:,:,0]),np.max(U[:,:,0]),']'
-                print ' ',field+'y min/max : [',np.min(U[:,:,1]),np.max(U[:,:,1]),']'
-                print ' ',field+'z min/max : [',np.min(U[:,:,2]),np.max(U[:,:,2]),']'
+                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:,0]),np.max(U[:,:,0])))
+                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:,1]),np.max(U[:,:,1])))
+                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:,2]),np.max(U[:,:,2])))
             else:
-                print ' ',field+' min/max : [',np.min(U[:,:]),np.max(U[:,:]),']'
+                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:]),np.max(U[:,:])))
 
         return x,U
 
@@ -221,7 +222,7 @@ class SampleCollection(object):
 
     def sample_all(self,pointTolerance=1e-4):
         for iloc,loc in enumerate(self.sampleLocations):
-            print 'Sample',iloc,'at',loc
+            print('Sample {} at {}'.format(ilocloc))
             sampleName = self.formatString.format(int(loc))
             x, Uarray = self.sampledData.getSample(sampleName,'U',verbose=False)
             # make sure arrays are sorted, for backwards compatibility
@@ -316,7 +317,7 @@ class SampleCollection(object):
 if __name__=='__main__':
 
     line0 = uniform(path='linesTransverse')
-    print line0
+    print(line0)
 
     x,U = line0.getSample('line_08km','U')
 
