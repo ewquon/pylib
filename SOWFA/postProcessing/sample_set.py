@@ -9,8 +9,8 @@ def pretty_list(strlist,indent=2,sep='\t',width=80):
     """
     sep = sep.expandtabs()
     max_item_len = max([len(s) for s in strlist])
-    items_per_line = (width - (indent+max_item_len)) / (len(sep)+max_item_len) + 1
-    Nlines = len(strlist) / items_per_line
+    items_per_line = int((width - (indent+max_item_len)) / (len(sep)+max_item_len)) + 1
+    Nlines = int(len(strlist) / items_per_line)
     extraline = (len(strlist) % items_per_line) > 0
     fmtstr = '{{:{:d}s}}'.format(max_item_len)
     strlist = [ fmtstr.format(s) for s in strlist ] # pad strings so that they're all the same length
@@ -63,8 +63,8 @@ class uniform:
                 npzfile = np.load(tsfile)
                 self.t = npzfile['t']
                 self.dt = npzfile['dt']
-                self.timeNames = npzfile['timeNames']
-                self.sampleNames = npzfile['sampleNames']
+                self.timeNames = [ name.decode('utf-8') for name in npzfile['timeNames'] ]  # npzfile['timeNames']
+                self.sampleNames = [ name.decode('utf-8') for name in npzfile['sampleNames'] ]  # npzfile['sampleNames']
                 self.N = len(self.t)
                 print('Loaded time series information from',tsfile)
             return
@@ -96,12 +96,12 @@ class uniform:
                  sampleNames=self.sampleNames)
 
     def __repr__(self):
-        s = 'Read times from {:s} :\n{:s}\n'.format(self.path,self.t) \
+        s = 'Read times from {:s} :\n{:s}\n'.format(self.path,str(self.t)) \
           + 'Sample names :\n' \
           + pretty_list(sorted(self.sampleNames))
         return s
 
-    def getSample(self,name,field,verbose=True):
+    def getSample(self,name,field='U',verbose=True):
         """Returns a sampled field with the specified field name,
         assuming 'x' is identical for all samples
 
@@ -205,7 +205,7 @@ class uniform:
 class SampleCollection(object):
 
     def __init__(self,sampleLocations,sampledData,formatString):
-        self.sampleLocations = sampleLocations  # a list of integer sampling locations
+        self.sampleLocations = sampleLocations  # a list of integer sampling locations for identifying file names
         self.sampledData = sampledData  # a list of sample objects
         self.formatString = formatString  # for constructing the data file name
 
@@ -222,7 +222,7 @@ class SampleCollection(object):
 
     def sample_all(self,pointTolerance=1e-4):
         for iloc,loc in enumerate(self.sampleLocations):
-            print('Sample {} at {}'.format(ilocloc))
+            print('Sample {} at {}'.format(iloc,loc))
             sampleName = self.formatString.format(int(loc))
             x, Uarray = self.sampledData.getSample(sampleName,'U',verbose=False)
             # make sure arrays are sorted, for backwards compatibility
@@ -251,7 +251,7 @@ class SampleCollection(object):
         _.shape = (Ntavg,N)
         """
         Navg = int(tavg_window/self.dt)
-        avgrange = slice(Navg/2,-Navg/2+1)
+        avgrange = slice(int(Navg/2),-int(Navg/2)+1)
         self.tavg = self.t[avgrange]
         self.Ntavg = len(self.tavg) 
 
@@ -296,6 +296,7 @@ class SampleCollection(object):
                 self.uv_mean[iloc,:,ix] = uniform_filter( up*vp, Navg )[avgrange]
                 self.uw_mean[iloc,:,ix] = uniform_filter( up*wp, Navg )[avgrange]
                 self.vw_mean[iloc,:,ix] = uniform_filter( vp*wp, Navg )[avgrange]
+        self.k = 0.5*(self.uu_mean + self.vv_mean + self.ww_mean)
 
 
     def calculate_TIdir(self):
