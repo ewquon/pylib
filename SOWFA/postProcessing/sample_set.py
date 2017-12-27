@@ -161,7 +161,7 @@ class uniform:
             
             # process files in all time dirs
             for it,tdir in enumerate(self.timeNames):
-                sys.stdout.write('\r  reading t= %f' % self.t[it])
+                sys.stderr.write('\r  reading t= %f' % self.t[it])
                 with open(os.path.join(self.path, tdir, fname), 'r') as f:
                     if isVector:
                         for i,line in enumerate(f):
@@ -172,21 +172,21 @@ class uniform:
                     else:
                         for i,line in enumerate(f):
                             U[it,i] = float( line.split()[pos] )
-            print ''
+            sys.stderr.write('\n')
 
             # sort by x (OpenFOAM output not guaranteed to be in order)
             reorder = x.argsort()
-            if isVector: 
-                return x[reorder], U[:,reorder,:]
-            else:
-                return x[reorder], U[:,reorder]
-
             print '  saving',ufile
             try:
                 np.save( xfile, x )
                 np.save( ufile, U )
             except IOError as err:
                 print '  warning, unable to write out npy file:',err
+
+            if isVector: 
+                return x[reorder], U[:,reorder,:]
+            else:
+                return x[reorder], U[:,reorder]
 
         # done reading sample
         if verbose:
