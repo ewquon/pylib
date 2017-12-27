@@ -101,7 +101,7 @@ class uniform:
           + pretty_list(sorted(self.sampleNames))
         return s
 
-    def getSample(self,name,field='U',verbose=True):
+    def getSample(self,name,field='U',sort=True,verbose=True):
         """Returns a sampled field with the specified field name,
         assuming 'x' is identical for all samples
 
@@ -192,8 +192,12 @@ class uniform:
             else:
                 print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:]),np.max(U[:,:])))
 
-        # sort by x (OpenFOAM output not guaranteed to be in order)
-        reorder = x.argsort()
+        # sort by x (OpenFOAM output not guaranteed to be in order...)
+        if sort:
+            reorder = x.argsort()
+        else:
+            reorder = slice(None)
+
         if isVector: 
             return x[reorder], U[:,reorder,:]
         else:
@@ -206,27 +210,26 @@ class SampleCollection(object):
         self.sampleLocations = sampleLocations  # a list of integer sampling locations for identifying file names
         self.sampledData = sampledData  # a list of sample objects
         self.formatString = formatString  # for constructing the data file name
-
         self.Nloc = len(sampleLocations)
         self.Nt = sampledData.N
         self.t = sampledData.t
         self.dt = sampledData.dt
-
-        self.x = None # to be filled in when sample_all is called
+        # to be filled in when sample_all is called...
+        self.x = None
         self.N = None
-
-        self.tavg = None # to be set when calculate_means is called
+        # to be set when calculate_means is called...
+        self.tavg = None
         self.Ntavg = None
 
-    def sample_all(self,pointTolerance=1e-4):
+    def sample_all(self,check_x=True,pointTolerance=1e-4):
         for iloc,loc in enumerate(self.sampleLocations):
             print('Sample {} at {}'.format(iloc,loc))
             sampleName = self.formatString.format(int(loc))
-            x, Uarray = self.sampledData.getSample(sampleName,'U',verbose=False)
+            x, Uarray = self.sampledData.getSample(sampleName,'U',sort=True,verbose=False)
             # make sure arrays are sorted, for backwards compatibility
-            reorder = x.argsort()
-            x = x[reorder]
-            Uarray = Uarray[:,reorder,:]
+            #reorder = x.argsort()
+            #x = x[reorder]
+            #Uarray = Uarray[:,reorder,:]
             # save sampled data
             if self.x is None:
                 self.x = x
