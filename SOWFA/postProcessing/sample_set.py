@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import print_function
 import sys,os
 import numpy as np
 from scipy.ndimage.filters import uniform_filter
@@ -8,8 +9,8 @@ def pretty_list(strlist,indent=2,sep='\t',width=80):
     """
     sep = sep.expandtabs()
     max_item_len = max([len(s) for s in strlist])
-    items_per_line = (width - (indent+max_item_len)) / (len(sep)+max_item_len) + 1
-    Nlines = len(strlist) / items_per_line
+    items_per_line = int((width - (indent+max_item_len)) / (len(sep)+max_item_len)) + 1
+    Nlines = int(len(strlist) / items_per_line)
     extraline = (len(strlist) % items_per_line) > 0
     fmtstr = '{{:{:d}s}}'.format(max_item_len)
     strlist = [ fmtstr.format(s) for s in strlist ] # pad strings so that they're all the same length
@@ -43,7 +44,7 @@ class uniform:
         try:
             dirs = next(os.walk(path))[1]
         except StopIteration:
-            print 'Path',path,'not found'
+            print('Path',path,'not found')
             return
         times = []
         timeNames = []
@@ -56,16 +57,16 @@ class uniform:
         self.t = np.array(times)
         self.N = len(self.t)
         if self.N==0: 
-            print 'No time directories found in', path
+            print('No time directories found in',path)
             # attempt to load time series information if it exists
             if os.path.isfile(tsfile):
                 npzfile = np.load(tsfile)
                 self.t = npzfile['t']
                 self.dt = npzfile['dt']
-                self.timeNames = npzfile['timeNames']
-                self.sampleNames = npzfile['sampleNames']
+                self.timeNames = [ name.decode('utf-8') for name in npzfile['timeNames'] ]  # npzfile['timeNames']
+                self.sampleNames = [ name.decode('utf-8') for name in npzfile['sampleNames'] ]  # npzfile['sampleNames']
                 self.N = len(self.t)
-                print 'Loaded time series information from',tsfile
+                print('Loaded time series information from',tsfile)
             return
 
         # sort based on times
@@ -74,7 +75,7 @@ class uniform:
         self.timeNames = [ timeNames[i] for i in order ]
         dt = np.diff(self.t)
         if np.max(dt)-np.min(dt) > 1e-14:
-            print 'Warning: gaps detected in sampling times'
+            print('Warning: gaps detected in sampling times')
             self.dt = dt
         else:
             self.dt = dt[0]
@@ -95,12 +96,12 @@ class uniform:
                  sampleNames=self.sampleNames)
 
     def __repr__(self):
-        s = 'Read times from {:s} :\n{:s}\n'.format(self.path,self.t) \
+        s = 'Read times from {:s} :\n{:s}\n'.format(self.path,str(self.t)) \
           + 'Sample names :\n' \
           + pretty_list(sorted(self.sampleNames))
         return s
 
-    def getSample(self,name,field,verbose=True):
+    def getSample(self,name,field='U',verbose=True):
         """Returns a sampled field with the specified field name,
         assuming 'x' is identical for all samples
 
@@ -115,7 +116,7 @@ class uniform:
                 found = True
                 break
         if not found:
-            print 'Sample',name,'with field',field,'not found'
+            print('Sample',name,'with field',field,'not found')
             return
 
         fname = f + '.' + self.sampleExt
@@ -131,7 +132,7 @@ class uniform:
                 isVector = True
             else:
                 isVector = False
-            print 'Data read from',ufile
+            print('Data read from',ufile)
 
         except IOError: # default operation
 
@@ -144,7 +145,7 @@ class uniform:
                 for i,_ in enumerate(f): pass
             self.NX = i+1
 
-            print 'Found set in',fname,': field',field,'at position',pos,'with',self.NX,'samples'
+            print('Found set in {} : field {} at position {} with {} samples'.format(fname,field,pos,self.NX))
 
             x = np.zeros(self.NX)
             with open(testfile, 'r') as f:
@@ -174,39 +175,38 @@ class uniform:
                             U[it,i] = float( line.split()[pos] )
             sys.stderr.write('\n')
 
-            # sort by x (OpenFOAM output not guaranteed to be in order)
-            reorder = x.argsort()
-            print '  saving',ufile
+            print('  saving',ufile)
             try:
                 np.save( xfile, x )
                 np.save( ufile, U )
             except IOError as err:
-                print '  warning, unable to write out npy file:',err
+                print('  warning, unable to write out npy file:',err)
 
-            if isVector: 
-                return x[reorder], U[:,reorder,:]
-            else:
-                return x[reorder], U[:,reorder]
-
-        # done reading sample
+        # done processing sample
         if verbose:
-            print '  x min/max : [',np.min(x),np.max(x),']'
+            print('  x min/max : [{},{}]'.format(np.min(x),np.max(x)))
             if isVector:
-                print ' ',field+'x min/max : [',np.min(U[:,:,0]),np.max(U[:,:,0]),']'
-                print ' ',field+'y min/max : [',np.min(U[:,:,1]),np.max(U[:,:,1]),']'
-                print ' ',field+'z min/max : [',np.min(U[:,:,2]),np.max(U[:,:,2]),']'
+                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:,0]),np.max(U[:,:,0])))
+                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:,1]),np.max(U[:,:,1])))
+                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:,2]),np.max(U[:,:,2])))
             else:
-                print ' ',field+' min/max : [',np.min(U[:,:]),np.max(U[:,:]),']'
+                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:]),np.max(U[:,:])))
 
-        return x,U
+        # sort by x (OpenFOAM output not guaranteed to be in order)
+        reorder = x.argsort()
+        if isVector: 
+            return x[reorder], U[:,reorder,:]
+        else:
+            return x[reorder], U[:,reorder]
 
 
 class SampleCollection(object):
 
     def __init__(self,sampleLocations,sampledData,formatString):
-        self.sampleLocations = sampleLocations
-        self.sampledData = sampledData
-        self.formatString = formatString
+        self.sampleLocations = sampleLocations  # a list of integer sampling locations for identifying file names
+        self.sampledData = sampledData  # a list of sample objects
+        self.formatString = formatString  # for constructing the data file name
+
         self.Nloc = len(sampleLocations)
         self.Nt = sampledData.N
         self.t = sampledData.t
@@ -220,7 +220,7 @@ class SampleCollection(object):
 
     def sample_all(self,pointTolerance=1e-4):
         for iloc,loc in enumerate(self.sampleLocations):
-            print 'Sample',iloc,'at',loc
+            print('Sample {} at {}'.format(iloc,loc))
             sampleName = self.formatString.format(int(loc))
             x, Uarray = self.sampledData.getSample(sampleName,'U',verbose=False)
             # make sure arrays are sorted, for backwards compatibility
@@ -249,7 +249,7 @@ class SampleCollection(object):
         _.shape = (Ntavg,N)
         """
         Navg = int(tavg_window/self.dt)
-        avgrange = slice(Navg/2,-Navg/2+1)
+        avgrange = slice(int(Navg/2),-int(Navg/2)+1)
         self.tavg = self.t[avgrange]
         self.Ntavg = len(self.tavg) 
 
@@ -294,6 +294,7 @@ class SampleCollection(object):
                 self.uv_mean[iloc,:,ix] = uniform_filter( up*vp, Navg )[avgrange]
                 self.uw_mean[iloc,:,ix] = uniform_filter( up*wp, Navg )[avgrange]
                 self.vw_mean[iloc,:,ix] = uniform_filter( vp*wp, Navg )[avgrange]
+        self.k = 0.5*(self.uu_mean + self.vv_mean + self.ww_mean)
 
 
     def calculate_TIdir(self):
@@ -315,7 +316,7 @@ class SampleCollection(object):
 if __name__=='__main__':
 
     line0 = uniform(path='linesTransverse')
-    print line0
+    print(line0)
 
     x,U = line0.getSample('line_08km','U')
 
