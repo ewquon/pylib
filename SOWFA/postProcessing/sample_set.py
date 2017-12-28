@@ -225,11 +225,12 @@ class SampleCollection(object):
         for iloc,loc in enumerate(self.sampleLocations):
             print('Sample {} at {}'.format(iloc,loc))
             sampleName = self.formatString.format(int(loc))
-            x, Uarray = self.sampledData.getSample(sampleName,'U',sort=True,verbose=False)
+            x, Uarray = self.sampledData.getSample(sampleName,'U',sort=False,verbose=False)
             # make sure arrays are sorted, for backwards compatibility
             #reorder = x.argsort()
             #x = x[reorder]
             #Uarray = Uarray[:,reorder,:]
+            x.sort()
             # save sampled data
             if self.x is None:
                 self.x = x
