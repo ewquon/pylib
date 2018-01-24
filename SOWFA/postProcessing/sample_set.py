@@ -112,7 +112,8 @@ class uniform:
         found = False
         suffix = '_' + field
         for f in self.sampleNames:
-            if f.endswith(suffix) and f[:-len(suffix)]==name:
+            #if f.endswith(suffix) and f[:-len(suffix)]==name:
+            if f.startswith(name) and field in f[len(name):].split('_'):
                 found = True
                 break
         if not found:
@@ -231,8 +232,8 @@ class SampleCollection(object):
                                                     sort=False,
                                                     verbose=False)
             tmp, Tarray = self.sampledData.get_sample(sampleName,'T',
-                                                    sort=False,
-                                                    verbose=False)
+                                                      sort=False,
+                                                      verbose=False)
             assert(np.all(x==tmp))
             # make sure arrays are sorted, for backwards compatibility
             #reorder = x.argsort()
