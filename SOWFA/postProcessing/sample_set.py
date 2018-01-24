@@ -101,7 +101,7 @@ class uniform:
           + pretty_list(sorted(self.sampleNames))
         return s
 
-    def getSample(self,name,field='U',sort=True,verbose=True):
+    def get_sample(self,name,field='U',sort=True,verbose=True):
         """Returns a sampled field with the specified field name,
         assuming 'x' is identical for all samples
 
@@ -122,17 +122,17 @@ class uniform:
         fname = f + '.' + self.sampleExt
 
         xfile = self.path + os.sep + f + '.x.npy'
-        ufile = self.path + os.sep + f + '.'+field + '.npy'
+        datafile = self.path + os.sep + f + '.'+field + '.npy'
         try:
             # read from pre-processed numpy data file
             x = np.load( xfile )
-            U = np.load( ufile )
-            self.NX = U.shape[1]
-            if len(U.shape)==3:
+            data = np.load( datafile )
+            self.NX = data.shape[1]
+            if len(data.shape)==3:
                 isVector = True
             else:
                 isVector = False
-            print('Data read from',ufile)
+            print('Data read from',datafile)
 
         except IOError: # default operation
 
@@ -155,10 +155,10 @@ class uniform:
             # allocate
             if field=='U': 
                 isVector = True
-                U = np.zeros( (self.N, self.NX, 3) )
+                data = np.zeros( (self.N, self.NX, 3) )
             else: 
                 isVector = False
-                U = np.zeros( (self.N, self.NX) )
+                data = np.zeros( (self.N, self.NX) )
             
             # process files in all time dirs
             for it,tdir in enumerate(self.timeNames):
@@ -166,19 +166,17 @@ class uniform:
                 with open(os.path.join(self.path, tdir, fname), 'r') as f:
                     if isVector:
                         for i,line in enumerate(f):
-                            #Ux[it,i] = float( line.split()[3*pos+0] )
-                            #Uy[it,i] = float( line.split()[3*pos+1] )
-                            #Uz[it,i] = float( line.split()[3*pos+2] )
-                            U[it,i,:] = [ float(val) for val in line.split()[3*pos:][:3] ]
+                            data[it,i,:] = [ float(val)
+                                    for val in line.split()[3*pos:][:3] ]
                     else:
                         for i,line in enumerate(f):
-                            U[it,i] = float( line.split()[pos] )
+                            data[it,i] = float( line.split()[pos] )
             sys.stderr.write('\n')
 
-            print('  saving',ufile)
+            print('  saving',datafile)
             try:
                 np.save( xfile, x )
-                np.save( ufile, U )
+                np.save( datafile, data )
             except IOError as err:
                 print('  warning, unable to write out npy file:',err)
 
@@ -186,11 +184,15 @@ class uniform:
         if verbose:
             print('  x min/max : [{},{}]'.format(np.min(x),np.max(x)))
             if isVector:
-                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:,0]),np.max(U[:,:,0])))
-                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:,1]),np.max(U[:,:,1])))
-                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:,2]),np.max(U[:,:,2])))
+                print('  {} min/max : [{},{}]'.format(
+                        field,np.min(data[:,:,0]),np.max(data[:,:,0])))
+                print('  {} min/max : [{},{}]'.format(
+                        field,np.min(data[:,:,1]),np.max(data[:,:,1])))
+                print('  {} min/max : [{},{}]'.format(
+                        field,np.min(data[:,:,2]),np.max(data[:,:,2])))
             else:
-                print('  {} min/max : [{},{}]'.format(field,np.min(U[:,:]),np.max(U[:,:])))
+                print('  {} min/max : [{},{}]'.format(
+                        field,np.min(data[:,:]),np.max(data[:,:])))
 
         # sort by x (OpenFOAM output not guaranteed to be in order...)
         if sort:
@@ -199,9 +201,9 @@ class uniform:
             reorder = slice(None)
 
         if isVector: 
-            return x[reorder], U[:,reorder,:]
+            return x[reorder], data[:,reorder,:]
         else:
-            return x[reorder], U[:,reorder]
+            return x[reorder], data[:,reorder]
 
 
 class SampleCollection(object):
@@ -225,7 +227,13 @@ class SampleCollection(object):
         for iloc,loc in enumerate(self.sampleLocations):
             print('Sample {} at {}'.format(iloc,loc))
             sampleName = self.formatString.format(int(loc))
-            x, Uarray = self.sampledData.getSample(sampleName,'U',sort=False,verbose=False)
+            x, Uarray = self.sampledData.get_sample(sampleName,'U',
+                                                    sort=False,
+                                                    verbose=False)
+            tmp, Tarray = self.sampledData.get_sample(sampleName,'T',
+                                                    sort=False,
+                                                    verbose=False)
+            assert(np.all(x==tmp))
             # make sure arrays are sorted, for backwards compatibility
             #reorder = x.argsort()
             #x = x[reorder]
@@ -235,21 +243,32 @@ class SampleCollection(object):
             if self.x is None:
                 self.x = x
                 self.N = len(x)
-                self.data = np.zeros((self.Nloc,self.Nt,self.N,3))
+                self.Udata = np.zeros((self.Nloc,self.Nt,self.N,3))
+                self.Tdata = np.zeros((self.Nloc,self.Nt,self.N))
             else:
                 assert(np.max(np.abs(x-self.x)) < pointTolerance)
-            self.data[iloc,:,:,:] = Uarray
+            self.Udata[iloc,:,:,:] = Uarray
+            self.Tdata[iloc,:,:] = Tarray
         
     def calculate_means(self,tavg_window=600.0):
         """
         Calculates
         ----------
-        Umean, Vmean, Wmean :
-            Time-averaged velocity components, averaged over 'tavg_window' (e.g. 10 min)   [m/s]
-        ufluc, vfluc, wfluc :
-            Velocity fluctuations, calculated with umean,vmean,wmean                       [m/s]
-        uu, vv, ww, uv, uw, vw :
-            Mean Reynolds' stress components, calculated using ufluc, vfluc, wfluc         [m^2/s^2]
+        Umean, Vmean, Wmean; Tmean :
+            Time-averaged velocity components, averaged over
+            'tavg_window' (e.g. 10 min) [m/s] [deg K]
+        ufluc, vfluc, wfluc; tfluc :
+            Velocity / potential temperature fluctuations, calculated
+            with umean, vmean, wmean [m/s] [deg K]
+        pfluc :
+            Pressure fluctuations, divided by ref density [m^2/s^2]
+        uu, vv, ww, uv, uw, vw:
+            Mean Reynolds' stress components, calculated using ufluc,
+            vfluc, wfluc [m^2/s^2]
+        tw:
+            Heat flux, calculated using wfluc and tfluc [deg K-m/s]
+        pw:
+            Heat flux, calculated using wfluc and tfluc [m^3/s^3]
         _.shape = (Ntavg,N)
         """
         Navg = int(tavg_window/self.dt)
@@ -269,35 +288,39 @@ class SampleCollection(object):
         self.u_fluc  = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.v_fluc  = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.w_fluc  = np.zeros((self.Nloc,self.Ntavg,self.N))
-        self.q_fluc  = np.zeros((self.Nloc,self.Ntavg,self.N))
+        self.t_fluc  = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.uu_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.vv_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.ww_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.uv_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.uw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.vw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
-        self.qw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
+        self.tw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         for iloc in range(self.Nloc):
             for ix in range(self.N):
-                U = uniform_filter( self.data[iloc,:,ix,0], Navg ) # size Nt
-                V = uniform_filter( self.data[iloc,:,ix,1], Navg )
-                W = uniform_filter( self.data[iloc,:,ix,2], Navg )
-                up = self.data[iloc,:,ix,0] - U # size Nt
-                vp = self.data[iloc,:,ix,1] - V
-                wp = self.data[iloc,:,ix,2] - W
-
+                U = uniform_filter( self.Udata[iloc,:,ix,0], Navg ) # size Nt
+                V = uniform_filter( self.Udata[iloc,:,ix,1], Navg )
+                W = uniform_filter( self.Udata[iloc,:,ix,2], Navg )
+                T = uniform_filter( self.Tdata[iloc,:,ix,2], Navg )
+                up = self.Udata[iloc,:,ix,0] - U # size Nt
+                vp = self.Udata[iloc,:,ix,1] - V
+                wp = self.Udata[iloc,:,ix,2] - W
+                tp = self.Tdata[iloc,:,ix] - T
                 self.U_mean[iloc,:,ix] = U[avgrange] # size Ntavg
                 self.V_mean[iloc,:,ix] = V[avgrange]
                 self.W_mean[iloc,:,ix] = W[avgrange]
+                self.T_mean[iloc,:,ix] = T[avgrange]
                 self.u_fluc[iloc,:,ix] = up[avgrange]
                 self.v_fluc[iloc,:,ix] = vp[avgrange]
                 self.w_fluc[iloc,:,ix] = wp[avgrange]
+                self.t_fluc[iloc,:,ix] = tp[avgrange]
                 self.uu_mean[iloc,:,ix] = uniform_filter( up*up, Navg )[avgrange]
                 self.vv_mean[iloc,:,ix] = uniform_filter( vp*vp, Navg )[avgrange]
                 self.ww_mean[iloc,:,ix] = uniform_filter( wp*wp, Navg )[avgrange]
                 self.uv_mean[iloc,:,ix] = uniform_filter( up*vp, Navg )[avgrange]
                 self.uw_mean[iloc,:,ix] = uniform_filter( up*wp, Navg )[avgrange]
                 self.vw_mean[iloc,:,ix] = uniform_filter( vp*wp, Navg )[avgrange]
+                self.tw_mean[iloc,:,ix] = uniform_filter( tp*wp, Navg )[avgrange]
         self.k = 0.5*(self.uu_mean + self.vv_mean + self.ww_mean)
 
 
@@ -322,6 +345,6 @@ if __name__=='__main__':
     line0 = uniform(path='linesTransverse')
     print(line0)
 
-    x,U = line0.getSample('line_08km','U')
+    x,U = line0.get_sample('line_08km','U')
 
 
