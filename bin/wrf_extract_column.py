@@ -18,6 +18,8 @@ z = None
 U = None
 V = None
 W = None
+PB = None
+PHB = None
 ilat, ilong = None, None  # indices of column at the met mast location
 
 for itime,fname in enumerate(datafiles):
@@ -59,29 +61,37 @@ for itime,fname in enumerate(datafiles):
                                                                                xlong[ilat,ilong],
                                                                                xlong[ilat+1,ilong+1]))
 
-    if z is None:
-        # calculate height AGL of column, at cell center
-        zstag = (wrfdata['PHB'][:][0,:,ilat,ilong] + wrfdata['PH'][:][0,:,ilat,ilong]) / 9.81
-        print('Ground geopotential, terrain height =',zstag[0],wrfdata['HGT'][:][0,ilat,ilong])
-        assert(np.abs(zstag[0] - wrfdata['HGT'][:][0,ilat,ilong]) < 0.001)
-        z = 0.5*(zstag[1:] + zstag[:-1]) - zstag[0]
-        print('Calculated column heights (AGL):',z)
-
     if U is None:
-        Nz = len(z)
+        Nz = wrfdata['PH'][:].shape[1] - 1
         print('Allocating arrays with size',Nt,Nz)
         U = np.zeros((Nt,Nz))
         V = np.zeros((Nt,Nz))
         W = np.zeros((Nt,Nz))
+        TH = np.zeros((Nt,Nz))  # potential temperature
+        PH = np.zeros((Nt,Nz+1))  # perturbation geopotential (staggered)
+        PHB = np.zeros((Nt,Nz+1))  # base-state geopotential (staggered)
+        z = np.zeros((Nt,Nz))  # calculated from PH, PHB, g
+
+    # calculate height AGL of column, at cell center
+    PH[itime,:] = wrfdata['PH'][:][0,:,ilat,ilong]
+    PHB[itime,:] = wrfdata['PHB'][:][0,:,ilat,ilong]
+    zstag = (PH[itime,:] + PHB[itime,:]) / 9.81
+    assert(np.abs(zstag[0] - wrfdata['HGT'][:][0,ilat,ilong]) < 0.001)
+    z[itime,:] = 0.5*(zstag[1:] + zstag[:-1]) - zstag[0]
+
+    if itime==0:
+        print('Ground geopotential, terrain height =',zstag[0],wrfdata['HGT'][:][0,ilat,ilong])
+        print('Calculated column heights (AGL):',z[0,:])
 
     # get cell-centered velocity components
     U[itime,:] = 0.5*( wrfdata['U'][:][0,:,ilat,ilong] + wrfdata['U'][:][0,:,ilat,ilong+1] )
     V[itime,:] = 0.5*( wrfdata['V'][:][0,:,ilat,ilong] + wrfdata['V'][:][0,:,ilat+1,ilong] )
     W[itime,:] = 0.5*( wrfdata['W'][:][0,1:,ilat,ilong] + wrfdata['W'][:][0,:-1,ilat,ilong] )
+    #TH[itime,:] = wrfdata['TH'][:][0,:,ilat,ilong]
 
     print('Processed',str(dt))
     
 # save data
 outfile = 'columndata_'+datestr+'.npz'
-np.savez(outfile,t=t,z=z,U=U,V=V,W=W)
+np.savez(outfile,t=t,z=z,U=U,V=V,W=W,TH=TH,PH=PH,PHB=PHB)
 print('Wrote',outfile)
