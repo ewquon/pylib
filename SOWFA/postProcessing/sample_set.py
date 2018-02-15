@@ -101,7 +101,10 @@ class uniform:
           + pretty_list(sorted(self.sampleNames))
         return s
 
-    def get_sample(self,name,field='U',sort=True,verbose=True):
+    def get_sample(self,
+                   name,field='U',sort=True,
+                   specialnames={'p_rgh':'prgh'},
+                   verbose=True):
         """Returns a sampled field with the specified field name,
         assuming 'x' is identical for all samples
 
@@ -110,20 +113,26 @@ class uniform:
         array; for a vector field, the output array has shape (N,NX,3).
         """
         found = False
+        if field in specialnames.keys():
+            searchfield = specialnames[field]
+        else:
+            searchfield = field
         suffix = '_' + field
         for f in self.sampleNames:
-            #if f.endswith(suffix) and f[:-len(suffix)]==name:
-            if f.startswith(name) and field in f[len(name):].split('_'):
+            for orig,new in specialnames.items():
+                f = f.replace(orig,new)
+            fields_in_file = f[len(name):].split('_')
+            if f.startswith(name) and (searchfield in fields_in_file):
                 found = True
+                pos = fields_in_file.index(searchfield)
                 break
         if not found:
             print('Sample',name,'with field',field,'not found')
             return
-
         fname = f + '.' + self.sampleExt
+        xfile = os.path.join(self.path, f+'.x.npy')
+        datafile = os.path.join(self.path, f+'.'+field+'.npy')
 
-        xfile = self.path + os.sep + f + '.x.npy'
-        datafile = self.path + os.sep + f + '.'+field + '.npy'
         try:
             # read from pre-processed numpy data file
             x = np.load( xfile )
@@ -135,11 +144,7 @@ class uniform:
                 isVector = False
             print('Data read from',datafile)
 
-        except IOError: # default operation
-
-            # get position of field
-            pos = -(len(f) - f.index(suffix))/2
-        
+        except IOError: # read in all data (default)
             # get number of lines (i.e., number of points in sample) and sampling locations
             testfile = os.path.join(self.path, self.timeNames[0], fname)
             with open(testfile, 'r') as f:
@@ -148,12 +153,8 @@ class uniform:
 
             print('Found set in {} : field {} at position {} with {} samples'.format(fname,field,pos,self.NX))
 
-            x = np.zeros(self.NX)
-            with open(testfile, 'r') as f:
-                for i,line in enumerate(f):
-                    x[i] = float( line.split()[0] )
-
             # allocate
+            x = None
             if field=='U': 
                 isVector = True
                 data = np.zeros( (self.N, self.NX, 3) )
@@ -164,14 +165,17 @@ class uniform:
             # process files in all time dirs
             for it,tdir in enumerate(self.timeNames):
                 sys.stderr.write('\r  reading t= %f' % self.t[it])
-                with open(os.path.join(self.path, tdir, fname), 'r') as f:
-                    if isVector:
-                        for i,line in enumerate(f):
-                            data[it,i,:] = [ float(val)
-                                    for val in line.split()[3*pos:][:3] ]
-                    else:
-                        for i,line in enumerate(f):
-                            data[it,i] = float( line.split()[pos] )
+                data_at_time = np.loadtxt(os.path.join(self.path, tdir, fname)) 
+                if x is None:
+                    x = data_at_time[:,0]
+                if isVector:
+                    for i in range(3):
+                        # column 0 is x
+                        # pos="1" ==> columns 1,2,3
+                        # pos="2" ==> columns 4,5,6
+                        data[it,:,i] = data_at_time[:,3*(pos-1)+i+1]
+                else:
+                    data[it,:] = data_at_time[:,pos]
             sys.stderr.write('\n')
 
             print('  saving',datafile)
@@ -250,8 +254,17 @@ class SampleCollection(object):
                 assert(np.max(np.abs(x-self.x)) < pointTolerance)
             self.Udata[iloc,:,:,:] = Uarray
             self.Tdata[iloc,:,:] = Tarray
+
+    def calculate_pressure(self,Tref,g):
+        self.Tref = Tref
+        self.rhok = 1.0 - ( (self.Tdata - Tref)/Tref )  # shape == (Nloc,Nt,Nx)
+        h = self.x
+        print('Assuming heights are',h)
+        #self.p = self.p_rgh + self.rhok*g*h
+        self.p = self.rhok*g*h
         
-    def calculate_means(self,tavg_window=600.0):
+    def calculate_means(self,tavg_window=600.0,
+                        calculate_pressure=False,Tref=300.0,g=9.81):
         """
         Calculates
         ----------
@@ -262,7 +275,8 @@ class SampleCollection(object):
             Velocity / potential temperature fluctuations, calculated
             with umean, vmean, wmean [m/s] [deg K]
         pfluc :
-            Pressure fluctuations, divided by ref density [m^2/s^2]
+            Pressure fluctuations, divided by ref density, calculated
+            using the specified reference temperature Tref [m^2/s^2]
         uu, vv, ww, uv, uw, vw:
             Mean Reynolds' stress components, calculated using ufluc,
             vfluc, wfluc [m^2/s^2]
@@ -278,6 +292,9 @@ class SampleCollection(object):
         self.Ntavg = len(self.tavg) 
 
         #window = np.ones((Navg,))/Navg # for np.convolve
+
+        if calculate_pressure:
+            self.calculate_pressure(Tref,g)
 
         #
         # calculate time averages and fluctuations  
@@ -297,12 +314,14 @@ class SampleCollection(object):
         self.uw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.vw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         self.tw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
+        self.pw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         for iloc in range(self.Nloc):
             for ix in range(self.N):
                 U = uniform_filter( self.Udata[iloc,:,ix,0], Navg ) # size Nt
                 V = uniform_filter( self.Udata[iloc,:,ix,1], Navg )
                 W = uniform_filter( self.Udata[iloc,:,ix,2], Navg )
-                T = uniform_filter( self.Tdata[iloc,:,ix,2], Navg )
+                T = uniform_filter( self.Tdata[iloc,:,ix], Navg )
+                P = uniform_filter( self.p[iloc,:,ix], Navg )
                 up = self.Udata[iloc,:,ix,0] - U # size Nt
                 vp = self.Udata[iloc,:,ix,1] - V
                 wp = self.Udata[iloc,:,ix,2] - W
@@ -322,6 +341,7 @@ class SampleCollection(object):
                 self.uw_mean[iloc,:,ix] = uniform_filter( up*wp, Navg )[avgrange]
                 self.vw_mean[iloc,:,ix] = uniform_filter( vp*wp, Navg )[avgrange]
                 self.tw_mean[iloc,:,ix] = uniform_filter( tp*wp, Navg )[avgrange]
+                self.pw_mean[iloc,:,ix] = uniform_filter( pp*wp, Navg )[avgrange]
         self.k = 0.5*(self.uu_mean + self.vv_mean + self.ww_mean)
 
 
