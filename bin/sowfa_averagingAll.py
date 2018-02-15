@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import sys
 from SOWFA.postProcessing.averaging import read
 import matplotlib.pyplot as plt
@@ -15,21 +16,23 @@ ref = refs.read()
 data = read( *sys.argv[1:] )
 
 #------------------------------------------------------------------------------
-tavg,TIx_hist,TIy_hist,TIz_hist,TIdir_hist,TIxyz_hist,TKE_hist = data.calcTI_hist( heights, tavg_window, dt, SFS )
+data.calcTI_hist( heights, tavg_window, dt, SFS )
+print(data.TIdir_hist)
 for ih,z in enumerate(heights):
-    plt.plot( tavg, TIdir_hist[:,ih], label='z={:.1f}'.format(z) )
+    plt.plot( data.tavg, data.TIdir_hist[:,ih], label='z={:.1f}'.format(z) )
     fname = 'TIhist_z{:.1f}.csv'.format(z)
     try:
-        np.savetxt( fname, np.vstack((tavg,TIdir_hist[:,ih])).T, delimiter=',', header='Time,TI' )
-        print 'wrote',fname
+        np.savetxt( fname, np.vstack((data.tavg,data.TIdir_hist[:,ih])).T,
+                    delimiter=',', header='Time,TI' )
+        print('wrote',fname)
     except IOError:
-        print 'Note:',fname,'was not written'
+        print('Note:',fname,'was not written')
 
 plt.legend(loc='best',fontsize='small')
 try:
     plt.savefig('TIhist.png')
 except IOError:
-    print 'Note: TIhist.png was not written'
+    print('Note: TIhist.png was not written')
 
 #==========
 plt.show()
@@ -37,10 +40,10 @@ plt.show()
 
 data.calcTI( heights )
 for i,h in enumerate(heights):
-    print 'z=',h,':'
-    print '  TIx/y/z =',data.TIx[i],data.TIy[i],data.TIz[i]
-    print '  TIdir   =',data.TIdir[i]
-    print '  TIxyz   =',data.TIxyz[i],' ( TKE=',data.TKE[i],')'
+    print('z=',h,':')
+    print('  TIx/y/z =',data.TIx[i],data.TIy[i],data.TIz[i])
+    print('  TIdir   =',data.TIdir[i])
+    print('  TIxyz   =',data.TIxyz[i],' ( TKE=',data.TKE[i],')')
 
 
 #------------------------------------------------------------------------------
@@ -73,7 +76,7 @@ fig00.suptitle(titlestr)
 try:
     fig00.savefig('Profiles_Mean.png')
 except IOError:
-    print 'Note: Profiles_Mean.png not written'
+    print('Note: Profiles_Mean.png not written')
 
 #------------------------------------------------------------------------------
 #
@@ -135,7 +138,7 @@ fig0.suptitle(titlestr)
 try:
     fig0.savefig('Profiles_MeanUdir.png')
 except IOError:
-    print 'Note: Profiles_MeanUdir.png not written'
+    print('Note: Profiles_MeanUdir.png not written')
 
 #------------------------------------------------------------------------------
 #
@@ -167,7 +170,7 @@ fig1.suptitle(titlestr)
 try:
     fig1.savefig('Profiles_Fluc.png')
 except IOError:
-    print 'Note: Profiles_Fluc.png not written'
+    print('Note: Profiles_Fluc.png not written')
 
 #------------------------------------------------------------------------------
 #
@@ -196,7 +199,7 @@ fig2.suptitle(titlestr)
 try:
     fig2.savefig('Profiles_SFS.png')
 except IOError:
-    print 'Note: Profiles_SFS.png not written'
+    print('Note: Profiles_SFS.png not written')
 
 #==========
 plt.show()
@@ -226,6 +229,6 @@ try:
                 )).T,
             header='z,U,V,W,T,uu,vv,ww,uv,uw,vw,R11,R22,R33,R12,R13,R23',
             delimiter=',' )
-    print 'wrote',fname
+    print('wrote',fname)
 except IOError:
-    print 'Note:',fname,'was not written'
+    print('Note:',fname,'was not written')

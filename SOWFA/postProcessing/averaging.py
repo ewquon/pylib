@@ -21,6 +21,7 @@ Sample usage:
                         'caseX/postProcessing/averaging/1000')
 
 """
+from __future__ import print_function
 import os
 import numpy as np
 
@@ -71,11 +72,11 @@ class averagingData(object):
                     dirTime = -1
                 self.simStartTimes.append(dirTime)
             elif not arg.startswith('boundaryData'):
-                print 'Checking directory',arg#,'with',listing
+                print('Checking directory',arg) #,'with',listing
                 # specified a directory containing output (time) subdirectories
                 for dirname in listing:
                     if not os.path.isdir(arg+os.sep+dirname): continue
-                    #print '  checking subdirectory',dirname
+                    #print('  checking subdirectory',dirname)
                     try:
                         startTime = float(dirname)
                         if 'hLevelsCell' in os.listdir(arg+os.sep+dirname):
@@ -87,16 +88,16 @@ class averagingData(object):
         self.simTimeDirs = [ x[1] for x in sorted(zip(self.simStartTimes,self.simTimeDirs)) ]
         self.simStartTimes.sort()
 
-        print 'Simulation (re)start times:',self.simStartTimes
+        print('Simulation (re)start times:',self.simStartTimes)
 
         # process all output dirs
         #for idir,tdir in enumerate( self.simTimeDirs ):
-        #    print 'Processing',tdir
+        #    print('Processing',tdir)
         #    self._process(tdir)
         if len(self.simTimeDirs) > 0:
             self._processDirs( self.simTimeDirs, **kwargs )
         else:
-            print 'No averaging time directories found!'
+            print('No averaging time directories found!')
     # }}}
 
     def __repr__(self):
@@ -114,7 +115,7 @@ class averagingData(object):
             for var in args:
                 if var in self._processed: self._processed.remove(var)
                 varList.append(var)
-            print 'Rereading variables',varList
+            print('Rereading variables',varList)
         else:
             for var in args:
                 if var not in self._processed: varList.append(var)
@@ -147,7 +148,7 @@ class averagingData(object):
         if getattr(self,'hLevelsCell') is None: # this is the first time dir
             self.hLevelsCell = z
         elif not np.all( self.hLevelsCell == z ):
-            print 'Error: cell levels do not match'
+            print('Error: cell levels do not match')
             return
 
         # check that we have the same amount of data
@@ -161,13 +162,13 @@ class averagingData(object):
                 Nlines.append(i+1)
                 line = line.split() # check final line for the right number of values
                 if not len(line) == len(z)+2: # t,dt,f_1,f_2,...,f_N for N heights
-                    print 'z',z
-                    print 'line',line
-                    print 'Error: number of output points inconsistent with hLevelsCell in',output
+                    print('z',z)
+                    print('line',line)
+                    print('Error: number of output points inconsistent with hLevelsCell in',output)
                     return
 
         if not np.min(Nlines) == np.max(Nlines):
-            print 'Error: number of output times do not match in all files'
+            print('Error: number of output times do not match in all files')
             return
         N = Nlines[0]
 
@@ -186,10 +187,10 @@ class averagingData(object):
             try:
                 olddata = getattr(self,field)
                 setattr( self, field, np.concatenate((olddata,newdata[:,2:])) )
-                print '  concatenated',field
+                print('  concatenated',field)
             except AttributeError:
                 setattr( self, field, newdata[:,2:] )
-                print '  created',field
+                print('  created',field)
 
         # add additional times
         try:
@@ -236,7 +237,7 @@ class averagingData(object):
             for field in outputs:
                 output = tdir + os.sep + field
                 if not os.path.isfile(output):
-                    print 'Error:',output,'not found'
+                    print('Error:',output,'not found')
                     return
 
                 with open(output,'r') as f:
@@ -244,12 +245,12 @@ class averagingData(object):
                     Nlines.append(i+1)
                     line = line.split() # check final line for the right number of values
                     if not len(line) == len(self.hLevelsCell)+2: # t,dt,f_1,f_2,...,f_N for N heights
-                        print 'z',z
-                        print 'line',line
-                        print 'Error: number of output points inconsistent with hLevelsCell in',output
+                        print('z',z)
+                        print('line',line)
+                        print('Error: number of output points inconsistent with hLevelsCell in',output)
                         return
             if not np.min(Nlines) == np.max(Nlines):
-                print 'Warning: number of output times do not match in all files'
+                print('Warning: number of output times do not match in all files')
         N = Nlines[0]
 
         # NOW process all data
@@ -259,7 +260,7 @@ class averagingData(object):
             setattr( self, field, newdata[:,2:] )
 
             self._processed.append(field)
-            print '  read',field
+            print('  read',field)
 
         self.t = np.array( newdata[:,0] )
         self.dt = np.array( newdata[:,1] )
@@ -301,7 +302,7 @@ class averagingData(object):
             heights = [heights]
             Nout = 1
         if Nout==0:
-            print 'Need to specify output heights'
+            print('Need to specify output heights')
             return
         TIx   = np.zeros(Nout)
         TIy   = np.zeros(Nout)
@@ -312,23 +313,23 @@ class averagingData(object):
 
         if avg_time is None:
             avg_time = self.t[-1]
-        if verbose: print 'Average at time',avg_time
+        if verbose: print('Average at time',avg_time)
 
         dtmin = np.min(self.dt)
         dtmax = np.max(self.dt)
         if dtmin==dtmax:
-            if verbose: print 'Constant dt, averaging window :',2*avg_width*dtmin,'s'
+            if verbose: print('Constant dt, averaging window :',2*avg_width*dtmin,'s')
         else:
             dtmean = np.mean(self.dt)
             if verbose: 
-                print 'Variable dt, approximate averaging window :',avg_width*dtmean,'s'
-                print '  dt min/mean/max=',dtmin,dtmean,dtmax
+                print('Variable dt, approximate averaging window :',avg_width*dtmean,'s')
+                print('  dt min/mean/max=',dtmin,dtmean,dtmax)
 
         i = np.argmin(np.abs(self.t-avg_time))
         js = max( i-avg_width  , 0 )
         je = min( i+avg_width+1, len(self.t) )
         dtsub = self.dt[js:je]
-        if verbose: print 'Processing range js,je,sum(dt):',js,je,np.sum(dtsub)
+        if verbose: print('Processing range js,je,sum(dt):',js,je,np.sum(dtsub))
 
         # calculate time-averaged velocity profiles
         UMeanAvg = np.dot( dtsub, self.U_mean[js:je,:] ) / np.sum(dtsub)
@@ -341,7 +342,7 @@ class averagingData(object):
         uvMeanAvg = np.dot( dtsub, self.uv_mean[js:je,:] ) / np.sum(dtsub)
         wwMeanAvg = np.dot( dtsub, self.ww_mean[js:je,:] ) / np.sum(dtsub)
         if SFS:
-            if verbose: print 'Adding SFS component'
+            if verbose: print('calcTI: Adding SFS component')
             uuMeanAvg += np.dot( dtsub, self.R11_mean[js:je,:] ) / np.sum(dtsub)
             vvMeanAvg += np.dot( dtsub, self.R22_mean[js:je,:] ) / np.sum(dtsub)
             uvMeanAvg += np.dot( dtsub, self.R12_mean[js:je,:] ) / np.sum(dtsub)
@@ -352,7 +353,7 @@ class averagingData(object):
         Uy = np.interp( heights, self.hLevelsCell, VMeanAvg )
         Uz = np.interp( heights, self.hLevelsCell, WMeanAvg )
         sqrt_uuMeanAvg = np.interp( heights, self.hLevelsCell, np.sqrt(uuMeanAvg) ) # for agreement with variances_avg_cell.m
-        #sqrt_uvMeanAvg = np.interp( heights, self.hLevelsCell, np.sqrt(uvMeanAvg) ) # not used
+       #sqrt_uvMeanAvg = np.interp( heights, self.hLevelsCell, np.sqrt(uvMeanAvg) ) # not used
         sqrt_vvMeanAvg = np.interp( heights, self.hLevelsCell, np.sqrt(vvMeanAvg) )
         sqrt_wwMeanAvg = np.interp( heights, self.hLevelsCell, np.sqrt(wwMeanAvg) )
         uuMeanAvg = np.interp( heights, self.hLevelsCell, uuMeanAvg )
@@ -362,7 +363,7 @@ class averagingData(object):
 
         Umag = np.sqrt( Ux**2 + Uy**2 + Uz**2 )
         if verbose:
-            for zi,ui in zip(heights,Umag): print 'Umag at z=',zi,'m : ',ui,'m/s'
+            for zi,ui in zip(heights,Umag): print('Umag at z=',zi,'m : ',ui,'m/s')
 
         # calculate wind direction
         windDir = np.abs( np.arctan2(Uy,Ux) )
@@ -420,7 +421,7 @@ class averagingData(object):
         try:
             from scipy.ndimage import uniform_filter
         except ImportError:
-            print 'Moving average calculation uses scipy.ndimage'
+            print('Moving average calculation uses scipy.ndimage')
             return
 
         self.getVarsIfNeeded('uu_mean','vv_mean','ww_mean','uv_mean','uw_mean','vw_mean')
@@ -428,7 +429,7 @@ class averagingData(object):
 
         Nout  = len(heights)
         if Nout==0:
-            print 'Need to specify output heights'
+            print('Need to specify output heights')
             return
 
         # check for inconsistent array lengths
@@ -441,8 +442,8 @@ class averagingData(object):
         if any([ field.shape[0] < Nt0 for field in fieldsToCheck ]):
             # need to prune arrays
             Nt_new = np.min([ field.shape[0] for field in fieldsToCheck ])
-            print 'Inconsistent averaging field lengths... is simulation still running?'
-            print '  truncated field histories from',Nt0,'to',Nt_new
+            print('Inconsistent averaging field lengths... is simulation still running?')
+            print('  truncated field histories from',Nt0,'to',Nt_new)
             self.t = self.t[:Nt_new]
             self.U_mean = self.U_mean[:Nt_new,:]
             self.V_mean = self.V_mean[:Nt_new,:]
@@ -463,8 +464,9 @@ class averagingData(object):
         tavg    = tuniform[Navg/2:-Navg/2+1]
         Ntavg   = len(tavg)
         if verbose:
-            print 'Interpolating to',Nt,'uniformly-spaced data points'
-            print 'Moving average window:',tavg_window,'s'
+            print('Interpolating to',Nt,'uniformly-spaced data points')
+            print('Moving average window:',tavg_window,'s (',Navg,' points per window )')
+            print('Averaged time range:',[tavg[0],tavg[-1]],'s')
 
         TIx   = np.zeros((Ntavg,Nout))
         TIy   = np.zeros((Ntavg,Nout))
@@ -513,7 +515,7 @@ class averagingData(object):
             uvMeanAvg = uniform_filter( uv_mean_uniform, Navg )[Navg/2:-Navg/2+1]
             wwMeanAvg = uniform_filter( ww_mean_uniform, Navg )[Navg/2:-Navg/2+1]
             if SFS:
-                if verbose: print 'Adding SFS component'
+                if verbose: print('calcTI_hist: Adding SFS component')
                 R11_mean_interp = self.R11_mean[:,k-1] + frac*(self.R11_mean[:,k] - self.R11_mean[:,k-1]) # length=len(self.t)
                 R22_mean_interp = self.R22_mean[:,k-1] + frac*(self.R22_mean[:,k] - self.R22_mean[:,k-1])
                 R12_mean_interp = self.R12_mean[:,k-1] + frac*(self.R12_mean[:,k] - self.R12_mean[:,k-1])
@@ -588,9 +590,9 @@ class averagingData(object):
             U = Uh[idx]
 
         if verbose:
-            print 'Estimating shear coefficient for Uref=',Uref,'and zref=',zref,':'
-            print '     U=',U,'m/s'
-            print '  at z=',heights,'m'
+            print('Estimating shear coefficient for Uref=',Uref,'and zref=',zref,':')
+            print('     U=',U,'m/s')
+            print('  at z=',heights,'m')
         lnz = np.log( np.array(heights)/zref )
         lnU = np.log( U/Uref )
         alpha = lnz.dot(lnU) / lnz.dot(lnz)
@@ -625,8 +627,8 @@ class averagingData(object):
         if verbose:
             z = self.hLevelsCell[idxs]
             #for zi,angi,tf in zip(self.hLevelsCell,dir,idxs):
-            #    print zi,'m ',angi,'deg ',tf
-            print 'Estimating shear between z=',z[0],'and',z[-1],'m'
+            #    print(zi,'m ',angi,'deg ',tf)
+            print('Estimating shear between z=',z[0],'and',z[-1],'m')
         rotorWindDir = dir[idxs]
         self.veer = rotorWindDir[-1] - rotorWindDir[0]
 
@@ -697,14 +699,14 @@ class averagingData(object):
         dUdz = (dUdz1-dUdz0)/dz * (-z[0]) + dUdz0
 
         if verbose:
-            print 'Calculating Ri with:'
-            print '  mean T :',Tmean
-            print '  dT/dz at z=',z[1],':',dTdz1,' (finite difference)'
-            print '  dT/dz at z=',z[0],':',dTdz0,' (finite difference)'
-            print '  dT/dz at z=0:',dTdz,' (extrapolated)'
-            print '  dU/dz at z=',z[1],':',dUdz1,' (finite difference)'
-            print '  dU/dz at z=',z[0],':',dUdz0,' (finite difference)'
-            print '  dU/dz at z=0:',dUdz,' (extrapolated)'
+            print('Calculating Ri with:')
+            print('  mean T :',Tmean)
+            print('  dT/dz at z=',z[1],':',dTdz1,' (finite difference)')
+            print('  dT/dz at z=',z[0],':',dTdz0,' (finite difference)')
+            print('  dT/dz at z=0:',dTdz,' (extrapolated)')
+            print('  dU/dz at z=',z[1],':',dUdz1,' (finite difference)')
+            print('  dU/dz at z=',z[0],':',dUdz0,' (finite difference)')
+            print('  dU/dz at z=0:',dUdz,' (extrapolated)')
 
         self.Tsurf = Tsurf
         self.dUdz_surf = dUdz
@@ -721,13 +723,11 @@ if __name__ == '__main__':
     subdirs = glob.glob('*')
     data = read(*subdirs)
 
-    TIx,TIy,TIz,TIdir,TIxyz,TKE = data.TI(avg_time=15000.,heights=[90.],SFS=True)
-    print 'TIx=',TIx
-    print 'TIy=',TIy
-    print 'TIz=',TIz
-    print 'TIdir=',TIdir
-    print 'TIxyz=',TIxyz
-    print 'TKE=',TKE
-
-    tavg,TIx_hist,TIy_hist,TIz_hist,TIdir_hist,TIxyz_hist,TKE_hist = data.TI_hist(heights=[90.],SFS=True)
+    data.TI(avg_time=15000.,heights=[90.],SFS=True)
+    print('TIx=',data.TIx)
+    print('TIy=',data.TIy)
+    print('TIz=',data.TIz)
+    print('TIdir=',data.TIdir)
+    print('TIxyz=',data.TIxyz)
+    print('TKE=',data.TKE)
 
