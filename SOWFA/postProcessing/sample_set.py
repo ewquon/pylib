@@ -104,7 +104,12 @@ class uniform:
 
     def get_sample(self,
                    name,field='U',sort=True,
-                   specialnames={'p_rgh':'prgh'},
+                   specialnames={'p_rgh':'prgh',
+                                 'ddt_halfUU':'ddtHalfUU',
+                                 'div_up':'divUp',
+                                 'div_utau':'divUtau'
+                                },
+                   oldnames=False,
                    verbose=True):
         """Returns a sampled field with the specified field name,
         assuming 'x' is identical for all samples
@@ -118,12 +123,14 @@ class uniform:
             searchfield = specialnames[field]
         else:
             searchfield = field
-        suffix = '_' + field
+
         for f in self.sampleNames:
+            if not f.startswith(name): continue
+            fieldstring = f[len(name):]
             for orig,new in specialnames.items():
-                f = f.replace(orig,new)
-            fields_in_file = f[len(name):].split('_')
-            if f.startswith(name) and (searchfield in fields_in_file):
+                fieldstring = fieldstring.replace(orig,new)
+            fields_in_file = fieldstring.split('_')
+            if searchfield in fields_in_file:
                 found = True
                 pos = fields_in_file.index(searchfield)
                 break
@@ -131,8 +138,12 @@ class uniform:
             print('Sample',name,'with field',field,'not found')
             return
         fname = f + '.' + self.sampleExt
-        xfile = os.path.join(self.path, f+'.x.npy')
-        datafile = os.path.join(self.path, f+'.'+field+'.npy')
+        if oldnames:
+            xfile = os.path.join(self.path, f+'.x.npy')
+            datafile = os.path.join(self.path, f+'.'+field+'.npy')
+        else:
+            xfile = os.path.join(self.path, name+'.x.npy')
+            datafile = os.path.join(self.path, name+'.'+field+'.npy')
 
         try:
             # read from pre-processed numpy data file
@@ -229,40 +240,41 @@ class SampleCollection(object):
         self.tavg = None
         self.Ntavg = None
 
-    def sample_all(self,check_x=True,pointTolerance=1e-4):
+    def sample_all(self,sample_list=['U','T'],check_x=True,pointTolerance=1e-4):
+        self.data = {}
         for iloc,loc in enumerate(self.sampleLocations):
-            print('Sample {} at {}'.format(iloc,loc))
+            print('Sample {} at {} m'.format(iloc,loc))
             sampleName = self.formatString.format(int(loc))
-            x, Uarray = self.sampledData.get_sample(sampleName,'U',
-                                                    sort=False,
-                                                    verbose=False)
-            tmp, Tarray = self.sampledData.get_sample(sampleName,'T',
-                                                      sort=False,
-                                                      verbose=False)
-            assert(np.all(x==tmp))
-            # make sure arrays are sorted, for backwards compatibility
-            #reorder = x.argsort()
-            #x = x[reorder]
-            #Uarray = Uarray[:,reorder,:]
-            x.sort()
-            # save sampled data
-            if self.x is None:
-                self.x = x
-                self.N = len(x)
-                self.Udata = np.zeros((self.Nloc,self.Nt,self.N,3))
-                self.Tdata = np.zeros((self.Nloc,self.Nt,self.N))
-            else:
-                assert(np.max(np.abs(x-self.x)) < pointTolerance)
-            self.Udata[iloc,:,:,:] = Uarray
-            self.Tdata[iloc,:,:] = Tarray
+            for fieldname in sample_list:
+                x, dataarray = self.sampledData.get_sample(sampleName,fieldname,
+                                                           sort=False,
+                                                           verbose=False)
+                # make sure arrays are sorted, for backwards compatibility
+                #reorder = x.argsort()
+                #x = x[reorder]
+                #Uarray = Uarray[:,reorder,:]
+                # save sampled data
+                if self.x is None:
+                    x.sort()
+                    self.x = x
+                    self.N = len(x)
+                elif check_x:
+                    assert(np.max(np.abs(x-self.x)) < pointTolerance)
+                if fieldname not in self.data.keys():
+                    #self.Udata = np.zeros((self.Nloc,self.Nt,self.N,3))
+                    #self.Tdata = np.zeros((self.Nloc,self.Nt,self.N))
+                    self.data[fieldname] = np.zeros([self.Nloc]+list(dataarray.shape))
+                if len(dataarray.shape) == 3:
+                    self.data[fieldname][iloc,:,:,:] = dataarray
+                else:
+                    self.data[fieldname][iloc,:,:] = dataarray
 
     def calculate_pressure(self,Tref,g):
         self.Tref = Tref
-        self.rhok = 1.0 - ( (self.Tdata - Tref)/Tref )  # shape == (Nloc,Nt,Nx)
+        self.rhok = 1.0 - ( (self.data['T'] - Tref)/Tref )  # shape == (Nloc,Nt,Nx)
         h = self.x
         print('Assuming heights are',h)
-        #self.p = self.p_rgh + self.rhok*g*h
-        self.p = self.rhok*g*h
+        self.p = self.p_rgh + self.rhok*g*h
         
     def calculate_means(self,tavg_window=600.0,
                         calculate_pressure=False,Tref=300.0,g=9.81):
@@ -318,15 +330,15 @@ class SampleCollection(object):
         self.pw_mean = np.zeros((self.Nloc,self.Ntavg,self.N))
         for iloc in range(self.Nloc):
             for ix in range(self.N):
-                U = uniform_filter( self.Udata[iloc,:,ix,0], Navg ) # size Nt
-                V = uniform_filter( self.Udata[iloc,:,ix,1], Navg )
-                W = uniform_filter( self.Udata[iloc,:,ix,2], Navg )
-                T = uniform_filter( self.Tdata[iloc,:,ix], Navg )
+                U = uniform_filter( self.data['U'][iloc,:,ix,0], Navg ) # size Nt
+                V = uniform_filter( self.data['U'][iloc,:,ix,1], Navg )
+                W = uniform_filter( self.data['U'][iloc,:,ix,2], Navg )
+                T = uniform_filter( self.data['T'][iloc,:,ix], Navg )
                 P = uniform_filter( self.p[iloc,:,ix], Navg )
-                up = self.Udata[iloc,:,ix,0] - U # size Nt
-                vp = self.Udata[iloc,:,ix,1] - V
-                wp = self.Udata[iloc,:,ix,2] - W
-                tp = self.Tdata[iloc,:,ix] - T
+                up = self.data['U'][iloc,:,ix,0] - U # size Nt
+                vp = self.data['U'][iloc,:,ix,1] - V
+                wp = self.data['U'][iloc,:,ix,2] - W
+                tp = self.data['T'][iloc,:,ix] - T
                 self.U_mean[iloc,:,ix] = U[avgrange] # size Ntavg
                 self.V_mean[iloc,:,ix] = V[avgrange]
                 self.W_mean[iloc,:,ix] = W[avgrange]
