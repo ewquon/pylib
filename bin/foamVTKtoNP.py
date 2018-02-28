@@ -20,7 +20,7 @@ if os.path.isfile(configname):
 else:
     # search upward in dir tree
     curprefix = '../'
-    while (configfile is None) and os.path.isdir(curprefix):
+    while (configpath is None) and os.path.isdir(curprefix):
         if os.path.isfile(curprefix + configname):
             configpath = curprefix + configname
         else:
