@@ -73,6 +73,14 @@ ax[3].plot(np.max(temp[t>=t0],axis=0),z,'k--')
 ax[3].set_xlabel('sourceT')
 
 #
+# output source vs height in a simpler format
+#
+data = np.stack((z, sourceU, sourceV, sourceW, sourceT))
+header = 'sources averaged from t={:.1f} to {:.1f} over {:d} iterations\n'.format(t0,t[-1],Navg)
+header += '\nz sourceU sourceV sourceW sourceT'
+np.savetxt('sources_mean.dat', data.T, fmt='%16.8g', header=header)
+
+#
 # output new sources file
 #
 print('sourceHeightsMomentum')
@@ -109,7 +117,7 @@ srcstr = ' '.join([str(val) for val in sourceT])
 print('    ({:f} {:s})'.format(0,srcstr))
 print('    ({:f} {:s})'.format(T,srcstr))
 print(');')
-fig.savefig('source_mean.png')
+fig.savefig('sources_mean.png')
 
 #
 # check convergence
@@ -131,7 +139,7 @@ ax.semilogy(t[1:], temp_converge, label='T')
 ax.set_xlabel('Time [s]')
 ax.set_ylabel('RMS change in source terms')
 ax.legend(loc='best')
-fig.savefig('source_rms_hist.png')
+fig.savefig('sources_rms_hist.png')
 
 #T,Z = np.meshgrid(t,z,indexing='ij')
 #print(T.shape,Z.shape,xmom.shape)
