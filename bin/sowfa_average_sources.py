@@ -48,31 +48,35 @@ if len(sys.argv) > 1:
     t0 = float(sys.argv[1])
 else:
     t0 = 0.0
+if len(sys.argv) > 2:
+    t1 = float(sys.argv[2])
+else:
+    t1 = 9e9
 Navg = len(t[t>=t0])
-sys.stderr.write('Averaging from t={:.1f} to {:.1f} over {:d} iterations\n'.format(t0,t[-1],Navg))
-sourceU = np.mean(xmom[t>=t0,:], axis=0)
-sourceV = np.mean(ymom[t>=t0,:], axis=0)
-sourceW = np.mean(zmom[t>=t0,:], axis=0)
-sourceT = np.mean(temp[t>=t0,:], axis=0)
+sys.stderr.write('Averaging from t={:.1f} to {:.1f} over {:d} iterations\n'.format(t0,t1,Navg))
+trange = (t >= t0) & (t < t1)
+sourceU = np.mean(xmom[trange,:], axis=0)
+sourceV = np.mean(ymom[trange,:], axis=0)
+sourceW = np.mean(zmom[trange,:], axis=0)
+sourceT = np.mean(temp[trange,:], axis=0)
 
 if len(z) > 1:
     fig,ax = plt.subplots(ncols=4,figsize=(6,6))
-    ist = np.nonzero(t>=t0)[0][0]
     ax[0].plot(sourceU,z)
-    ax[0].plot(np.min(xmom[t>=t0],axis=0),z,'k--')
-    ax[0].plot(np.max(xmom[t>=t0],axis=0),z,'k--')
+    ax[0].plot(np.min(xmom[trange],axis=0),z,'k--')
+    ax[0].plot(np.max(xmom[trange],axis=0),z,'k--')
     ax[0].set_xlabel('sourceU')
     ax[1].plot(sourceV,z)
-    ax[1].plot(np.min(ymom[t>=t0],axis=0),z,'k--')
-    ax[1].plot(np.max(ymom[t>=t0],axis=0),z,'k--')
+    ax[1].plot(np.min(ymom[trange],axis=0),z,'k--')
+    ax[1].plot(np.max(ymom[trange],axis=0),z,'k--')
     ax[1].set_xlabel('sourceV')
     ax[2].plot(sourceW,z)
-    ax[2].plot(np.min(zmom[t>=t0],axis=0),z,'k--')
-    ax[2].plot(np.max(zmom[t>=t0],axis=0),z,'k--')
+    ax[2].plot(np.min(zmom[trange],axis=0),z,'k--')
+    ax[2].plot(np.max(zmom[trange],axis=0),z,'k--')
     ax[2].set_xlabel('sourceW')
     ax[3].plot(sourceT,z)
-    ax[3].plot(np.min(temp[t>=t0],axis=0),z,'k--')
-    ax[3].plot(np.max(temp[t>=t0],axis=0),z,'k--')
+    ax[3].plot(np.min(temp[trange],axis=0),z,'k--')
+    ax[3].plot(np.max(temp[trange],axis=0),z,'k--')
     ax[3].set_xlabel('sourceT')
     fig.savefig('sources_mean.png')
 
@@ -80,7 +84,7 @@ if len(z) > 1:
 # output averaged sources vs height in a simpler format
 #
 data = np.stack((z, sourceU, sourceV, sourceW, sourceT))
-header = 'sources averaged from t={:.1f} to {:.1f} over {:d} iterations\n'.format(t0,t[-1],Navg)
+header = 'sources averaged from t={:.1f} to {:.1f} over {:d} iterations\n'.format(t0,t1,Navg)
 header += '\nz sourceU sourceV sourceW sourceT'
 np.savetxt('sources_mean.dat', data.T, fmt='%16.8g', header=header)
 
@@ -159,7 +163,7 @@ else:
     fig,ax = plt.subplots()
     def plot_nonconst(u,name):
         if not (np.min(u) == np.max(u)):
-            ax.plot(t, u, label=name)
+            ax.plot(t[trange], u[trange], label=name)
     plot_nonconst(xmom, 'U')
     plot_nonconst(ymom, 'V')
     plot_nonconst(zmom, 'W')
