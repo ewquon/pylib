@@ -224,6 +224,7 @@ try:
                 np.mean(data.uv_mean[-iavg:,:], axis=0),
                 np.mean(data.uw_mean[-iavg:,:], axis=0),
                 np.mean(data.vw_mean[-iavg:,:], axis=0),
+                np.mean(data.Tw_mean[-iavg:,:], axis=0),
                 np.mean(data.R11_mean[-iavg:,:], axis=0),
                 np.mean(data.R22_mean[-iavg:,:], axis=0),
                 np.mean(data.R33_mean[-iavg:,:], axis=0),

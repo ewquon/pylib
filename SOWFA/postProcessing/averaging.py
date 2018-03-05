@@ -32,7 +32,7 @@ def read(*args,**kwargs):
 
 allAveragingVars = [
         'U_mean','V_mean','W_mean','T_mean',
-        'uu_mean', 'vv_mean', 'ww_mean', 'uv_mean', 'uw_mean', 'vw_mean',
+        'uu_mean', 'vv_mean', 'ww_mean', 'uv_mean', 'uw_mean', 'vw_mean', 'Tw_mean',
         'R11_mean','R22_mean','R33_mean','R12_mean','R13_mean','R23_mean',
         ]
 
