@@ -13,6 +13,8 @@ SFS = True
 
 ref = refs.read()
 
+# read data.hLevelsCell with shape (NZ)
+# read data.U_mean, ... with shape (NT, NZ)
 data = read( *sys.argv[1:] )
 
 #------------------------------------------------------------------------------
@@ -206,26 +208,28 @@ plt.show()
 #==========
 
 fname = 'averagingProfiles.csv'
+iavg = int(tavg_window/dt)
+print('Outputting average from',data.t[-iavg],'to',data.t[-1])
 try:
     np.savetxt( fname,
             np.vstack((
                 data.hLevelsCell,
-                data.U_mean[-1,:],
-                data.V_mean[-1,:],
-                data.W_mean[-1,:],
-                data.T_mean[-1,:],
-                data.uu_mean[-1,:],
-                data.vv_mean[-1,:],
-                data.ww_mean[-1,:],
-                data.uv_mean[-1,:],
-                data.uw_mean[-1,:],
-                data.vw_mean[-1,:],
-                data.R11_mean[-1,:],
-                data.R22_mean[-1,:],
-                data.R33_mean[-1,:],
-                data.R12_mean[-1,:],
-                data.R13_mean[-1,:],
-                data.R23_mean[-1,:]
+                np.mean(data.U_mean[-iavg:,:], axis=0),
+                np.mean(data.V_mean[-iavg:,:], axis=0),
+                np.mean(data.W_mean[-iavg:,:], axis=0),
+                np.mean(data.T_mean[-iavg:,:], axis=0),
+                np.mean(data.uu_mean[-iavg:,:], axis=0),
+                np.mean(data.vv_mean[-iavg:,:], axis=0),
+                np.mean(data.ww_mean[-iavg:,:], axis=0),
+                np.mean(data.uv_mean[-iavg:,:], axis=0),
+                np.mean(data.uw_mean[-iavg:,:], axis=0),
+                np.mean(data.vw_mean[-iavg:,:], axis=0),
+                np.mean(data.R11_mean[-iavg:,:], axis=0),
+                np.mean(data.R22_mean[-iavg:,:], axis=0),
+                np.mean(data.R33_mean[-iavg:,:], axis=0),
+                np.mean(data.R12_mean[-iavg:,:], axis=0),
+                np.mean(data.R13_mean[-iavg:,:], axis=0),
+                np.mean(data.R23_mean[-iavg:,:], axis=0),
                 )).T,
             header='z,U,V,W,T,uu,vv,ww,uv,uw,vw,R11,R22,R33,R12,R13,R23',
             delimiter=',' )
