@@ -91,19 +91,20 @@ for itime,dpath in enumerate(ts.dirList):
                       k, patchName=bcname)
         karray[itime,:,:] = k.reshape((ny,nz), order='F')
         print('  wrote data in',datapath)
-#    else:
-#        # read existing boundaryData files at this time
-#        Ufield = bc.read_vector_data(os.path.join(boundaryData, bcname, tname, 'U'),
-#                                     NY=ny, NZ=nz)
-#        Tfield = bc.read_vector_data(os.path.join(boundaryData, bcname, tname, 'T'),
-#                                     NY=ny, NZ=nz)
-#        kfield = bc.read_vector_data(os.path.join(boundaryData, bcname, tname, 'k'),
-#                                     NY=ny, NZ=nz)
-#        for i in range(3):
-#            Uarray[itime,:,:,i] = Ufield[i,:,:]
-#        Tarray[itime,:,:] = Tfield
-#        karray[itime,:,:] = kfield
+    else:
+        # read existing boundaryData files at this time
+        Ufield = bc.read_vector_data(os.path.join(boundaryData, bcname, tname, 'U'),
+                                     NY=ny, NZ=nz)
+        Tfield = bc.read_scalar_data(os.path.join(boundaryData, bcname, tname, 'T'),
+                                     NY=ny, NZ=nz)
+        kfield = bc.read_scalar_data(os.path.join(boundaryData, bcname, tname, 'k'),
+                                     NY=ny, NZ=nz)
+        for i in range(3):
+            Uarray[itime,:,:,i] = Ufield[i,:,:]
+        Tarray[itime,:,:] = Tfield
+        karray[itime,:,:] = kfield
 
-np.savez_compressed(os.path.join(boundaryData, bcname, bcname+'.npz'),
-                    U=Uarray, T=Tarray, k=karray)
+npzfile = os.path.join(boundaryData, bcname, bcname+'.npz')
+np.savez_compressed(npzfile, U=Uarray, T=Tarray, k=karray)
+print('wrote',npzfile)
 
