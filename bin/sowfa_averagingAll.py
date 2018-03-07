@@ -232,7 +232,7 @@ try:
                 np.mean(data.R13_mean[-iavg:,:], axis=0),
                 np.mean(data.R23_mean[-iavg:,:], axis=0),
                 )).T,
-            header='z,U,V,W,T,uu,vv,ww,uv,uw,vw,R11,R22,R33,R12,R13,R23',
+            header='z,U,V,W,T,uu,vv,ww,uv,uw,vw,Tw,R11,R22,R33,R12,R13,R23',
             delimiter=',' )
     print('wrote',fname)
 except IOError:
