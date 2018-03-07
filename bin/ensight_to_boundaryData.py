@@ -40,15 +40,24 @@ if os.path.isdir(boundaryData):
 #print('Scaling factors:',yscale,zscale)
 
 ts = TimeSeries(dpath)
+Ntimes = len(ts.outputTimes)
+print(Ntimes)
 print(ts)
 
-for time,dpath in zip(ts.outputTimes, ts.dirList):
+Uarray = np.zeros((Ntimes,ny,nz,3))
+Tarray = np.zeros((Ntimes,ny,nz))
+karray = np.zeros((Ntimes,ny,nz))
+
+bcdir = os.path.join(boundaryData, bcname)
+if not os.path.isdir(bcdir):
+    os.makedirs(bcdir)
+
+for itime,dpath in enumerate(ts.dirList):
+    print('t=',ts.outputTimes[itime])
     tname = os.path.split(dpath)[-1]
-    print('t=',time)
     pointsfile = os.path.join(boundaryData, bcname, 'points')
     datapath = os.path.join(boundaryData, bcname, tname)
     if not os.path.isfile(pointsfile):
-        os.makedirs(os.path.join(boundaryData, bcname))
         # read mesh
         # y = y.reshape((ny,nz), order='F')
         # z = z.reshape((ny,nz), order='F')
@@ -58,22 +67,43 @@ for time,dpath in zip(ts.outputTimes, ts.dirList):
         x[:] = xinflow
         bc.write_points(pointsfile, x, y, z, patchName=bcname)
         print('  wrote',pointsfile)
+        np.savez_compressed(pointsfile+'.npz',
+                            y=y.reshape((ny,nz), order='F'),
+                            z=z.reshape((ny,nz), order='F'))
+        print('  wrote',pointsfile+'.npz')
     if not os.path.isdir(datapath):
         os.makedirs(datapath)
         # process U
-        # u = u.reshape((ny,nz), order='F')
         u,v,w = ens.read_vector(os.path.join(dpath, bcname+'_U.000.U'), Ncells)
         bc.write_data(os.path.join(boundaryData, bcname, tname, 'U'),
                       np.stack((u,v,w)), patchName=bcname)
+        Uarray[itime,:,:,0] = u.reshape((ny,nz), order='F')
+        Uarray[itime,:,:,1] = v.reshape((ny,nz), order='F')
+        Uarray[itime,:,:,2] = w.reshape((ny,nz), order='F')
         # process T
         T = ens.read_scalar(os.path.join(dpath, bcname+'_T_k.000.T'), Ncells)
         bc.write_data(os.path.join(boundaryData, bcname, tname, 'T'),
                       T, patchName=bcname)
+        Tarray[itime,:,:] = T.reshape((ny,nz), order='F')
         # process k
         k = ens.read_scalar(os.path.join(dpath, bcname+'_T_k.000.k'), Ncells)
         bc.write_data(os.path.join(boundaryData, bcname, tname, 'k'),
                       k, patchName=bcname)
+        karray[itime,:,:] = k.reshape((ny,nz), order='F')
         print('  wrote data in',datapath)
-    else:
-        print('  did NOT overwrite data in',datapath)
+#    else:
+#        # read existing boundaryData files at this time
+#        Ufield = bc.read_vector_data(os.path.join(boundaryData, bcname, tname, 'U'),
+#                                     NY=ny, NZ=nz)
+#        Tfield = bc.read_vector_data(os.path.join(boundaryData, bcname, tname, 'T'),
+#                                     NY=ny, NZ=nz)
+#        kfield = bc.read_vector_data(os.path.join(boundaryData, bcname, tname, 'k'),
+#                                     NY=ny, NZ=nz)
+#        for i in range(3):
+#            Uarray[itime,:,:,i] = Ufield[i,:,:]
+#        Tarray[itime,:,:] = Tfield
+#        karray[itime,:,:] = kfield
+
+np.savez_compressed(os.path.join(boundaryData, bcname, bcname+'.npz'),
+                    U=Uarray, T=Tarray, k=karray)
 
