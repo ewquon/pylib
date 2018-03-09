@@ -17,7 +17,7 @@ import NWTC.datatools.ensight as ens
 import NWTC.datatools.SOWFA.timeVaryingMappedBC as bc
 
 if len(sys.argv) <= 5:
-    sys.exit('USAGE: '+sys.argv[0]+' ensight_array_outputdir BC_name flow_dir plane_x ncells_y ncells_z [new_boundaryData_dir]')
+    sys.exit('USAGE: '+sys.argv[0]+' ensight_array_outputdir BC_name plane_x ncells_y ncells_z [new_boundaryData_dir]')
 dpath = sys.argv[1]
 bcname = sys.argv[2]
 xinflow = sys.argv[3]
@@ -104,7 +104,7 @@ for itime,dpath in enumerate(ts.dirList):
         Tarray[itime,:,:] = Tfield
         karray[itime,:,:] = kfield
 
-npzfile = os.path.join(boundaryData, bcname, bcname+'.npz')
+npzfile = os.path.join(boundaryData, bcname, 'data.npz')
 np.savez_compressed(npzfile, U=Uarray, T=Tarray, k=karray)
 print('wrote',npzfile)
 
