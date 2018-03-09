@@ -4,7 +4,7 @@ import os
 import sys
 import numpy as np
 
-histfile = 'uStarMeanHist.dat'
+histfile = 'CourantHist.dat'
 
 makeplots = False
 logfiles = []
@@ -20,7 +20,8 @@ if len(logfiles) == 0:
 nsteps = 0
 startTime = -1
 simTimes = []
-uStarMean = []
+CoMean = []
+CoMax = []
 for logfile in logfiles:
     print('Processing',logfile)
     try:
@@ -33,22 +34,29 @@ for logfile in logfiles:
                     curTime = float(line.split()[2])
                     simTimes.append(curTime)
                     nsteps += 1
-                elif line.startswith('uStarMean ='):
-                    us = float(line.split()[2])
+                elif line.startswith('Courant Number'):
+                    line = line.split()
+                    cmean = float(line[3])
+                    cmax = float(line[5])
                     try:
-                        uStarMean[nsteps-1] = us
+                        CoMean[nsteps-1] = cmean
                     except IndexError:
-                        uStarMean.append(us)
+                        CoMean.append(cmean)
+                    try:
+                        CoMax[nsteps-1] = cmax
+                    except IndexError:
+                        CoMax.append(cmax)
     except IOError:
         sys.exit('Problem reading '+logfile)
 
 print('Writing',histfile)
-np.savetxt(histfile, np.vstack((simTimes,uStarMean)).T, fmt='%g', delimiter='\t')
+np.savetxt(histfile, np.vstack((simTimes,CoMean,CoMax)).T, fmt='%g', delimiter='\t')
 
 
 if makeplots:
     plt.figure()
-    plt.plot(simTimes,uStarMean)
+    plt.plot(simTimes,CoMean)
+    plt.plot(simTimes,CoMax,'k--')
     plt.xlabel('time step [s]')
-    plt.ylabel('uStarMean [m/s]')
+    plt.ylabel('Courant Number')
     plt.show()
