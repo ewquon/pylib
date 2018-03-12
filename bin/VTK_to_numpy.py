@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+#
+# Utility for converting VTK files output from foamToVTK into compressed numpy arrays
+#
 from __future__ import print_function
 import sys, os
 import numpy as np
