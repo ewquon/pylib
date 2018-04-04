@@ -9,12 +9,17 @@ def tps(r):
     """Thin-plate spline RBF"""
     return np.array([ ri*ri*np.log(ri) if ri > 0 else 0.0 for ri in r ])
 
+def grad_tps(r):
+    return np.array([ 2*np.log(ri) + 1.0 if ri > 0 else 0.0 for ri in r ])
+
+
 class RBFInterpolant(object):
     """An instance of the interpolant is associated with a given set of
     data sites"""
 
     def __init__(self, x, fvals=None,
-                 func=tps, P=lambda x: [1, x[0], x[1]]):
+                 func=tps, gradient=None,
+                 P=lambda x: [1, x[0], x[1]]):
         """Data sites (or "centers") with shape (N,dim)
         Default RBF is the thin-plate spline
         Default polynomial is P(x,y) = B0 + B1*x + B2*y
@@ -24,6 +29,7 @@ class RBFInterpolant(object):
         self.P = P
         self.Q = len(P(x[0,:]))
         self.func = func
+        self.grad = gradient
         self.calculate_LHS()
         if fvals is not None:
             self.update(fvals)
@@ -59,7 +65,7 @@ class RBFInterpolant(object):
         self.coefs = coefs
 
     def evaluate(self,xi):
-        """Evaluates coefficients at xo for all times"""
+        """Evaluates interpolant at xi for all times"""
         assert(self.coefs is not None)
         r2 = np.zeros((self.N,))
         interpvec = np.zeros((self.N+self.Q,))
@@ -68,3 +74,22 @@ class RBFInterpolant(object):
         interpvec[:self.N] = self.func(np.sqrt(r2))
         interpvec[self.N:] = self.P(xi)
         return np.dot(interpvec, self.coefs)
+
+    def evaluate_gradient(self,xi,axis):
+        """Evaluates gradient of the interpolant at xi for all times, 
+        where axisname is 'x', 'y', or 'z'.
+        Assumes that the lowest-order polynomial terms are [1, x, y]
+        """
+        assert(self.coefs is not None)
+        assert(self.grad is not None)
+        assert(axis < self.dim)
+        delta = np.zeros((self.N,self.dim))
+        r2 = np.zeros((self.N,))
+        interpvec = np.zeros((self.N+self.Q,))
+        for d in range(self.dim):
+            delta[:,d] = xi[d] - self.x[:,d]
+            r2 += delta[:,d]**2
+        interpvec[:self.N] = delta[:,axis] * self.grad(np.sqrt(r2))
+        interpvec[self.N+axis+1] = 1.0
+        return np.dot(interpvec, self.coefs)
+
