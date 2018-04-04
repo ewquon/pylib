@@ -3,14 +3,32 @@
 # written by Eliot Quon (eliot.quon@nrel.gov)
 # 
 from __future__ import print_function
+import sys
 import numpy as np
 
-def tps(r):
+def thin_plate(r):
     """Thin-plate spline RBF"""
     return np.array([ ri*ri*np.log(ri) if ri > 0 else 0.0 for ri in r ])
-
-def grad_tps(r):
+def grad_thin_plate(r):
     return np.array([ 2*np.log(ri) + 1.0 if ri > 0 else 0.0 for ri in r ])
+
+def multiquadric(r,eps=1.0):
+    """Multiquadric RBF, c > 0"""
+    return np.sqrt(1 + (eps*r)**2)
+def grad_multiquadric(r,eps=1.0):
+    return eps**2*r / np.sqrt(1 + (eps*r)**2)
+
+def inverse(r,eps=1.0):
+    """Inverse quadratic RBF, c > 0"""
+    return 1.0 / (1 + (eps*r)**2)
+def grad_inverse(r,eps=1.0):
+    return -2*eps**2*r / (1 + (eps*r)**2)**2
+
+def gaussian(r,eps=1.0):
+    """Gaussian RBF"""
+    return np.exp(-(eps*r)**2)
+def grad_gaussian(r,eps=1.0):
+    return -2*eps**2*r * np.exp(-(eps*r)**2)
 
 
 class RBFInterpolant(object):
@@ -18,24 +36,71 @@ class RBFInterpolant(object):
     data sites"""
 
     def __init__(self, x, fvals=None,
-                 func=tps, gradient=None,
-                 P=lambda x: [1, x[0], x[1]]):
+                 name='thin_plate',
+                 func=None, gradient=None,
+                 P=lambda x: [1, x[0], x[1]],
+                 **params):
         """Data sites (or "centers") with shape (N,dim)
         Default RBF is the thin-plate spline
         Default polynomial is P(x,y) = B0 + B1*x + B2*y
         """
         self.x = x
+        self.dist = None
         self.N, self.dim = x.shape
         self.P = P
         self.Q = len(P(x[0,:]))
-        self.func = func
-        self.grad = gradient
+
+        def if_not_found(*args,**kwargs):
+            print('Warning:',name,'is not a valid RBF name')
+        thismodule = sys.modules[self.__module__]
+        if func is not None:
+            self.func = func
+        else:
+            self.func = getattr(thismodule,name,if_not_found)
+        if gradient is not None:
+            self.grad = gradient
+        else:
+            self.grad = getattr(thismodule,'grad_'+name,if_not_found)
+
+        self.params = params
         self.calculate_LHS()
+
         if fvals is not None:
             self.update(fvals)
         else:
             self.Ntimes = 0
             self.coefs = None
+
+    def test(self,name):
+        return getattr(self,name)
+
+    def calculate_separation(self):
+        """Calculate radial distances between all combinations of
+        centers"""
+        self.dist = []
+        for j in range(self.N):
+            for k in range(j,self.N):
+                if j == k:
+                    continue
+                else:
+                    d = self.x[j,:] - self.x[k,:]
+                    r = np.sqrt(np.dot(d,d))
+                    self.dist.append(r)
+
+    def mean_separation(self):
+        if self.dist is None:
+            self.calculate_separation()
+        return np.mean(self.dist)
+
+    def min_separation(self):
+        if self.dist is None:
+            self.calculate_separation()
+        return np.min(self.dist)
+
+    def max_separation(self):
+        if self.dist is None:
+            self.calculate_separation()
+        return np.max(self.dist)
 
     def calculate_LHS(self):
         """Populate the left-hand side of the interpolation system
@@ -45,7 +110,7 @@ class RBFInterpolant(object):
             r2 = np.zeros((self.N,))
             for d in range(self.dim):
                 r2 += (self.x[j,d] - self.x[:,d])**2
-            Amat[j,:self.N] = self.func(np.sqrt(r2))
+            Amat[j,:self.N] = self.func(np.sqrt(r2),**self.params)
             pvals = self.P(self.x[j,:])
             Amat[j,self.N:] = pvals
             Amat[self.N:,j] = pvals
@@ -71,7 +136,7 @@ class RBFInterpolant(object):
         interpvec = np.zeros((self.N+self.Q,))
         for d in range(self.dim):
             r2 += (xi[d] - self.x[:,d])**2
-        interpvec[:self.N] = self.func(np.sqrt(r2))
+        interpvec[:self.N] = self.func(np.sqrt(r2),**self.params)
         interpvec[self.N:] = self.P(xi)
         return np.dot(interpvec, self.coefs)
 
@@ -89,7 +154,25 @@ class RBFInterpolant(object):
         for d in range(self.dim):
             delta[:,d] = xi[d] - self.x[:,d]
             r2 += delta[:,d]**2
-        interpvec[:self.N] = delta[:,axis] * self.grad(np.sqrt(r2))
+        interpvec[:self.N] = delta[:,axis] * self.grad(np.sqrt(r2),**self.params)
         interpvec[self.N+axis+1] = 1.0
         return np.dot(interpvec, self.coefs)
+
+    def evaluate_field(self,xvec,yvec):
+        """Calls evaluate for all points on a regular grid defined by
+        x and y vectors"""
+        field = np.zeros((len(xvec),len(yvec),self.Ntimes))
+        for i,xi in enumerate(xvec):
+            for j,yj in enumerate(yvec):
+                field[i,j,:] = self.evaluate([xi,yj])
+        return field
+
+    def evaluate_gradient_field(self,xvec,yvec):
+        """Calls evaluate for all points on a regular grid defined by
+        x and y vectors"""
+        field = np.zeros((len(xvec),len(yvec),self.Ntimes))
+        for i,xi in enumerate(xvec):
+            for j,yj in enumerate(yvec):
+                field[i,j,:] = self.evaluate_gradient([xi,yj])
+        return field
 
