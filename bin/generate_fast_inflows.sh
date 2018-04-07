@@ -1,4 +1,8 @@
 #!/bin/bash
+#
+# Run from inside postProcessing/inflowPlanes directory
+# Assumes 30 sampled planes, ID'd from 0-29
+#
 set -e
 converter="$HOME/inflow/utilities/ensight_planes_to_hawc.py"
 mkdir -p inflowPlanes

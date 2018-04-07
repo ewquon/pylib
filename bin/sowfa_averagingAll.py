@@ -7,7 +7,7 @@ import numpy as np
 import refs
 
 heights = [90.,200, 400, 600, 800]
-tavg_window = 600.
+tavg_window = 1800. #600.
 dt = 1.0
 SFS = True
 
@@ -209,6 +209,8 @@ plt.show()
 
 fname = 'averagingProfiles.csv'
 iavg = int(tavg_window/dt)
+if iavg > len(data.t):
+    iavg = len(data.t)
 print('Outputting average from',data.t[-iavg],'to',data.t[-1])
 try:
     np.savetxt( fname,
