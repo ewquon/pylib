@@ -11,11 +11,20 @@ import numpy as np
 from NWTC.datatools.timeseries import TimeSeries
 import NWTC.datatools.SOWFA.timeVaryingMappedBC as bc
 
-points = bc.read_boundary_points('points')
-y = points[0]
-z = points[1]
-ny = len(y)
-nz = len(z)
+if len(sys.argv) > 2:
+    ny,nz = [ int(arg) for arg in sys.argv[1:3] ]
+    kwargs = { 'NY': ny, 'NZ': nz }
+    if len(sys.argv) > 3:
+        kwargs['order'] = sys.argv[3]
+    points = bc.read_boundary_points('points',**kwargs)
+    y = points[0]
+    z = points[1]
+else:
+    points = bc.read_boundary_points('points')
+    y = points[0]
+    z = points[1]
+    ny = len(y)
+    nz = len(z)
 
 ts = TimeSeries('.')
 Ntimes = len(ts.outputTimes)
