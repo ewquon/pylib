@@ -154,7 +154,8 @@ class uniform:
                 isVector = True
             else:
                 isVector = False
-            print('Data read from',datafile)
+            if verbose:
+                print('Data read from',datafile)
 
         except IOError: # read in all data (default)
             # get number of lines (i.e., number of points in sample) and sampling locations
@@ -240,10 +241,12 @@ class SampleCollection(object):
         self.tavg = None
         self.Ntavg = None
 
-    def sample_all(self,sample_list=['U','T'],check_x=True,pointTolerance=1e-4):
+    def sample_all(self, sample_list=['U','T'], check_x=True, pointTolerance=1e-4,
+                   verbose=True):
         self.data = {}
         for iloc,loc in enumerate(self.sampleLocations):
-            print('Sample {} at {} m'.format(iloc,loc))
+            if verbose:
+                print('Sample {} at {} m'.format(iloc,loc))
             sampleName = self.formatString.format(int(loc))
             for fieldname in sample_list:
                 x, dataarray = self.sampledData.get_sample(sampleName,fieldname,
@@ -277,7 +280,8 @@ class SampleCollection(object):
         self.p = self.p_rgh + self.rhok*g*h
         
     def calculate_means(self,tavg_window=600.0,
-                        calculate_pressure=False,Tref=300.0,g=9.81):
+                        calculate_pressure=False,Tref=300.0,g=9.81,
+                        have_T=True,have_p=False):
         """
         Calculates
         ----------
@@ -333,28 +337,30 @@ class SampleCollection(object):
                 U = uniform_filter( self.data['U'][iloc,:,ix,0], Navg ) # size Nt
                 V = uniform_filter( self.data['U'][iloc,:,ix,1], Navg )
                 W = uniform_filter( self.data['U'][iloc,:,ix,2], Navg )
-                T = uniform_filter( self.data['T'][iloc,:,ix], Navg )
-                P = uniform_filter( self.p[iloc,:,ix], Navg )
                 up = self.data['U'][iloc,:,ix,0] - U # size Nt
                 vp = self.data['U'][iloc,:,ix,1] - V
                 wp = self.data['U'][iloc,:,ix,2] - W
-                tp = self.data['T'][iloc,:,ix] - T
                 self.U_mean[iloc,:,ix] = U[avgrange] # size Ntavg
                 self.V_mean[iloc,:,ix] = V[avgrange]
                 self.W_mean[iloc,:,ix] = W[avgrange]
-                self.T_mean[iloc,:,ix] = T[avgrange]
                 self.u_fluc[iloc,:,ix] = up[avgrange]
                 self.v_fluc[iloc,:,ix] = vp[avgrange]
                 self.w_fluc[iloc,:,ix] = wp[avgrange]
-                self.t_fluc[iloc,:,ix] = tp[avgrange]
                 self.uu_mean[iloc,:,ix] = uniform_filter( up*up, Navg )[avgrange]
                 self.vv_mean[iloc,:,ix] = uniform_filter( vp*vp, Navg )[avgrange]
                 self.ww_mean[iloc,:,ix] = uniform_filter( wp*wp, Navg )[avgrange]
                 self.uv_mean[iloc,:,ix] = uniform_filter( up*vp, Navg )[avgrange]
                 self.uw_mean[iloc,:,ix] = uniform_filter( up*wp, Navg )[avgrange]
                 self.vw_mean[iloc,:,ix] = uniform_filter( vp*wp, Navg )[avgrange]
-                self.tw_mean[iloc,:,ix] = uniform_filter( tp*wp, Navg )[avgrange]
-                self.pw_mean[iloc,:,ix] = uniform_filter( pp*wp, Navg )[avgrange]
+                if have_T:
+                    T = uniform_filter( self.data['T'][iloc,:,ix], Navg )
+                    tp = self.data['T'][iloc,:,ix] - T
+                    self.T_mean[iloc,:,ix] = T[avgrange]
+                    self.t_fluc[iloc,:,ix] = tp[avgrange]
+                    self.tw_mean[iloc,:,ix] = uniform_filter( tp*wp, Navg )[avgrange]
+                if have_p:
+                    P = uniform_filter( self.p[iloc,:,ix], Navg )
+                    self.pw_mean[iloc,:,ix] = uniform_filter( pp*wp, Navg )[avgrange]
         self.k = 0.5*(self.uu_mean + self.vv_mean + self.ww_mean)
 
 

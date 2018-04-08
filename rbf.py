@@ -32,8 +32,15 @@ def grad_gaussian(r,eps=1.0):
 
 
 class RBFInterpolant(object):
-    """An instance of the interpolant is associated with a given set of
-    data sites"""
+    """Radial basis function interpolant. 
+    
+    An instance of the interpolant is associated with a given set of
+    data sites (or "centers"). The workflow for interpolating a set of
+    data (x,f(x)) to point xi is as follows:
+        interpolant = RBFInterpolant(x)
+        interpolant.update(f)
+        interpolant.evaluate(xi)
+    """
 
     def __init__(self, x, fvals=None,
                  name='thin_plate',
@@ -63,7 +70,7 @@ class RBFInterpolant(object):
             self.grad = getattr(thismodule,'grad_'+name,if_not_found)
 
         self.params = params
-        self.calculate_LHS()
+        self._calculate_LHS()
 
         if fvals is not None:
             self.update(fvals)
@@ -71,8 +78,19 @@ class RBFInterpolant(object):
             self.Ntimes = 0
             self.coefs = None
 
-    def test(self,name):
-        return getattr(self,name)
+    def _calculate_LHS(self):
+        """Populate the left-hand side of the interpolation system
+        for a given set of data sites and specified RBF"""
+        Amat = np.zeros((self.N+self.Q, self.N+self.Q))
+        for j in range(self.N):
+            r2 = np.zeros((self.N,))
+            for d in range(self.dim):
+                r2 += (self.x[j,d] - self.x[:,d])**2
+            Amat[j,:self.N] = self.func(np.sqrt(r2),**self.params)
+            pvals = self.P(self.x[j,:])
+            Amat[j,self.N:] = pvals
+            Amat[self.N:,j] = pvals
+        self.A = Amat
 
     def calculate_separation(self):
         """Calculate radial distances between all combinations of
@@ -101,20 +119,6 @@ class RBFInterpolant(object):
         if self.dist is None:
             self.calculate_separation()
         return np.max(self.dist)
-
-    def calculate_LHS(self):
-        """Populate the left-hand side of the interpolation system
-        for a given set of data sites and specified RBF"""
-        Amat = np.zeros((self.N+self.Q, self.N+self.Q))
-        for j in range(self.N):
-            r2 = np.zeros((self.N,))
-            for d in range(self.dim):
-                r2 += (self.x[j,d] - self.x[:,d])**2
-            Amat[j,:self.N] = self.func(np.sqrt(r2),**self.params)
-            pvals = self.P(self.x[j,:])
-            Amat[j,self.N:] = pvals
-            Amat[self.N:,j] = pvals
-        self.A = Amat
 
     def update(self,fvals):
         """Calculates interpolation coefficients for a set of function
@@ -175,4 +179,7 @@ class RBFInterpolant(object):
             for j,yj in enumerate(yvec):
                 field[i,j,:] = self.evaluate_gradient([xi,yj])
         return field
+
+
+class LOOCV(object):
 
