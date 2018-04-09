@@ -182,4 +182,31 @@ class RBFInterpolant(object):
 
 
 class LOOCV(object):
+    """Driver for Leave-One-Out Cross-Validation (LOOCV), which uses
+    the RBFInterpolant class.
+    """
 
+    def __init__(self,x,**kwargs):
+        self.x = x
+        self.N, dim = x.shape
+        self.xsubsets = [ np.concatenate((x[:i],x[i+1:]))
+                          for i in range(self.N) ]
+        self.interpolants = [ RBFInterpolant(xsub, **kwargs)
+                              for xsub in self.xsubsets ]
+        self.fsubsets = None
+
+    def calculate(self,fvals):
+        N,self.Ntimes = fvals.shape
+        assert(N == self.N)
+        self.fref = fvals
+        self.fsubsets = [ np.concatenate((fvals[:i,:],fvals[i+1:,:]),
+                                         axis=0)
+                          for i in range(self.N) ]
+        for interp,f in zip(self.interpolants,self.fsubsets):
+            interp.update(f)
+        self.finterp = [ 
+            interp.evaluate(xi)
+            for xi,interp in zip(self.x,self.interpolants)
+        ]
+        self.errors = np.array(self.finterp) - self.fref
+        return self.errors
