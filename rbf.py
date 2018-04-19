@@ -151,7 +151,7 @@ class RBFInterpolant(object):
 
     def evaluate_gradient(self,xi,axis):
         """Evaluates gradient of the interpolant at xi for all times, 
-        where axisname is 'x', 'y', or 'z'.
+        where axis=0,1,2.
         Assumes that the lowest-order polynomial terms are [1, x, y]
         """
         assert(self.coefs is not None)
