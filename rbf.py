@@ -124,7 +124,12 @@ class RBFInterpolant(object):
         """Calculates interpolation coefficients for a set of function
         values associated with the data sites. Values should have shape
         (N,Ntimes)"""
-        N,self.Ntimes = fvals.shape
+        if len(fvals.shape) == 1:
+            self.Ntimes = 1
+            N = len(fvals)
+            fvals = fvals.reshape((N,1))
+        else:
+            N,self.Ntimes = fvals.shape
         assert(N == self.N)
         coefs = np.zeros((self.N+self.Q,self.Ntimes))
         RHS = np.zeros(np.shape(coefs))
