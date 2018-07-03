@@ -42,9 +42,11 @@ for timestep_dir in dirlist:
     for f in [ f for f in os.listdir(timestep_dir) if os.path.isfile(os.path.join(timestep_dir,f)) ]:
         if f.startswith('.'):
             continue
-        fsplit = f.split('.')
-        fbasename = '.'.join(fsplit[0:-1])
-        ext = fsplit[-1]
+#        fsplit = f.split('.')
+#        fbasename = '.'.join(fsplit[0:-1])
+#        ext = fsplit[-1]
+        fbasename,ext = os.path.splitext(f)
+        ext = ext[1:]
         fbasesplit = fbasename.split('_')
         var = fbasesplit[0]
         name = '_'.join(fbasesplit[1:])
