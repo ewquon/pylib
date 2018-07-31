@@ -11,52 +11,71 @@ import numpy as np
 from NWTC.datatools.timeseries import TimeSeries
 import NWTC.datatools.SOWFA.timeVaryingMappedBC as bc
 
+npzfile = 'data.npz'
+
 if len(sys.argv) > 2:
     ny,nz = [ int(arg) for arg in sys.argv[1:3] ]
     kwargs = { 'NY': ny, 'NZ': nz }
     if len(sys.argv) > 3:
         kwargs['order'] = sys.argv[3]
-    points = bc.read_boundary_points('points',**kwargs)
-    y = points[0]
-    z = points[1]
+    y,z,is_structured = bc.read_boundary_points('points',**kwargs)
 else:
-    points = bc.read_boundary_points('points')
-    y = points[0]
-    z = points[1]
-    ny = len(y)
-    nz = len(z)
+    y,z,is_structured = bc.read_boundary_points('points')
 
 ts = TimeSeries('.')
 Ntimes = len(ts.outputTimes)
-print(Ntimes)
 print(ts)
 
-Uarray = np.zeros((Ntimes,ny,nz,3))
-Tarray = np.zeros((Ntimes,ny,nz))
-karray = np.zeros((Ntimes,ny,nz))
+if is_structured:
+    # regular grid
+    ny = len(y)
+    nz = len(z)
+    N = None
+    Uarray = np.zeros((Ntimes,ny,nz,3))
+    Tarray = np.zeros((Ntimes,ny,nz))
+    karray = np.zeros((Ntimes,ny,nz))
+else:
+    ny = None
+    nz = None
+    assert(len(y) == len(z))
+    N = len(y)
+    Uarray = np.zeros((Ntimes,N,3))
+    Tarray = np.zeros((Ntimes,N))
+    karray = np.zeros((Ntimes,N))
 
 have_k = True
 for itime,dpath in enumerate(ts.dirList):
     tname = os.path.split(dpath)[-1]
-    print('t=',ts.outputTimes[itime],' ',dpath,' (',tname,')')
+    print('t={:f} {:s} ({:s})'.format(ts.outputTimes[itime],dpath,tname))
 
-    Ufield = bc.read_vector_data(os.path.join(tname, 'U'),
-                                 NY=ny, NZ=nz)
-    for i in range(3):
-        Uarray[itime,:,:,i] = Ufield[i,:,:]
+    if is_structured:
+        Ufield = bc.read_vector_data(os.path.join(tname, 'U'), NY=ny, NZ=nz)
+        for i in range(3):
+            Uarray[itime,:,:,i] = Ufield[i,:,:]
+    else:
+        Ufield = bc.read_vector_data(os.path.join(tname, 'U'))
+        for i in range(3):
+            Uarray[itime,:,i] = Ufield[i,:]
 
-    Tfield = bc.read_scalar_data(os.path.join(tname, 'T'),
-                                 NY=ny, NZ=nz)
-    Tarray[itime,:,:] = Tfield
+    if is_structured:
+        Tfield = bc.read_scalar_data(os.path.join(tname, 'T'), NY=ny, NZ=nz)
+        Tarray[itime,:,:] = Tfield
+    else:
+        Tfield = bc.read_scalar_data(os.path.join(tname, 'T'))
+        Tarray[itime,:] = Tfield
 
     if os.path.isfile(os.path.join(tname, 'k')):
-        kfield = bc.read_scalar_data(os.path.join(tname, 'k'),
-                                     NY=ny, NZ=nz)
-        karray[itime,:,:] = kfield
+        if is_structured:
+            kfield = bc.read_scalar_data(os.path.join(tname, 'k'), NY=ny, NZ=nz)
+            karray[itime,:,:] = kfield
+        else:
+            kfield = bc.read_scalar_data(os.path.join(tname, 'k'))
+            karray[itime,:] = kfield
     else:
         have_k = False
 
-npzfile = 'data.npz'
+print(Uarray.shape)
+
 if have_k:
     np.savez_compressed(npzfile, U=Uarray, T=Tarray, k=karray)
 else:
