@@ -26,6 +26,7 @@ for logfile in logfiles:
     try:
         with open(logfile,'r') as f:
             for line in f:
+                line = line.strip()
                 if line.startswith('Create mesh'):
                     startTime = float(line.split()[-1])
                     if startTime > 0: print('Detected restart from t =',startTime)
@@ -35,7 +36,7 @@ for logfile in logfiles:
                     nsteps += 1
                 elif line.startswith('Total Boundary Flux'):
                     line = line.split()
-                    fluxerr = float(line[-1])
+                    fluxerr = float(line[3])
                     try:
                         hist[nsteps-1] = fluxerr
                     except IndexError:
