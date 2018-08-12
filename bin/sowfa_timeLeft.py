@@ -67,8 +67,11 @@ print 'Average/min/max time per step', \
 totalTime = elapsedTime / completed
 print 'ESTIMATED TOTAL TIME:',myutils.smartTime(totalTime)
 if log_est_total_time:
-    with open(log_est_total_time,'a') as f:
-        f.write(time.strftime('%x %X\tsimulated t={:.1f}s, N={:d}\tESTIMATED TOTAL TIME: {:s}\n'.format(curTime,nsteps,myutils.smartTime(totalTime))))
+    try:
+        with open(log_est_total_time,'a') as f:
+            f.write(time.strftime('%x %X\tsimulated t={:.1f}s, N={:d}\tESTIMATED TOTAL TIME: {:s}\n'.format(curTime,nsteps,myutils.smartTime(totalTime))))
+    except IOError:
+        pass
 
 remainingTime = totalTime - elapsedTime
 print 'Remaining time:',myutils.smartTime(remainingTime)
