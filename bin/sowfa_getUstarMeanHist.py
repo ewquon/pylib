@@ -21,6 +21,7 @@ nsteps = 0
 startTime = -1
 simTimes = []
 uStarMean = []
+restarts = []
 for logfile in logfiles:
     print('Processing',logfile)
     try:
@@ -28,7 +29,9 @@ for logfile in logfiles:
             for line in f:
                 if line.startswith('Create mesh'):
                     startTime = float(line.split()[-1])
-                    if startTime > 0: print('Detected restart from t =',startTime)
+                    if startTime > 0:
+                        restarts.append(startTime)
+                        print('Detected restart from t =',startTime)
                 elif line.startswith('Time ='):
                     curTime = float(line.split()[2])
                     simTimes.append(curTime)
@@ -41,6 +44,23 @@ for logfile in logfiles:
                         uStarMean.append(us)
     except IOError:
         sys.exit('Problem reading '+logfile)
+
+# prune repeated parts of the time series
+simTimes = np.array(simTimes)
+uStarMean = np.array(uStarMean)
+for rst in restarts:
+    rstTime = simTimes[simTimes > rst][0]
+    i = np.nonzero(simTimes == rstTime)[0]
+    assert(len(i)==2)
+    simTimes = np.concatenate((simTimes[:i[0]], simTimes[i[1]:]))
+    uStarMean = np.concatenate((uStarMean[:i[0]], uStarMean[i[1]:]))
+
+# if simulation still running, array lengths may differ
+Nt,Nu = len(simTimes),len(uStarMean)
+if not Nt == Nu:
+    N = min(Nt,Nu)
+    simTimes = simTimes[:N]
+    uStarMean = uStarMean[:N]
 
 print('Writing',histfile)
 np.savetxt(histfile, np.vstack((simTimes,uStarMean)).T, fmt='%g', delimiter='\t')
