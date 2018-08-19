@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import os
+import glob
 import sys
 import numpy as np
 
@@ -15,7 +15,11 @@ for arg in sys.argv[1:]:
     else:
         logfiles.append(arg)
 if len(logfiles) == 0:
+    logfiles = glob.glob('log.*Solver')
+if len(logfiles) == 0:
     sys.exit('USAGE: '+sys.argv[0]+' logfile(s)')
+
+logfiles.sort()
 
 nsteps = 0
 startTime = -1
