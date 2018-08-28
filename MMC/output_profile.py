@@ -70,9 +70,10 @@ class MMCdata(object):
             Dataframe with datetime index and columns corresponding to
             the data arrays described above; a 'z' column describes the
             height AGL. 
-        surface: pandas.DataFrame
+        surface: pandas.DataFrame, optional
             Dataframe with datetime index and columns corresponding to
-            the surface data arrays described above.
+            the surface data arrays described above. Set to None if data
+            are not available.
         info: dict
             Dictionary with header information, including institution,
             location, codename, casetype, casename, latitude, and 
@@ -112,7 +113,9 @@ class MMCdata(object):
 
 
     def write_ascii(self,fname,surface=None,profile=None):
-        """Write out ascii data (for all available dates by default)"""
+        """Write out ascii data (for all available dates) into a
+        single file. To split up files, call write_ascii_days() instead.
+        """
         if surface is None:
             surface = self.surface
         if profile is None:
@@ -122,22 +125,21 @@ class MMCdata(object):
         for key,val in infodata.items():
             if isinstance(val,str):
                 infodata[key] = val.upper()
+#-- No buffering w/o io module; writing one line at a time is slow
         #with open(fname,'w') as f:
         with io.open(fname,'w') as f:
             f.write(header.format(**infodata))
-# df.to_dict(orient='records') returns a list of dicts, with one dict
-# per row of the dataframe
 #-- THIS IS SLOW
+# Note: df.to_dict(orient='records') returns a list of dicts, with one dict per row of the dataframe
 #            for t_i, hdr in zip(self.t,
 #                                     self.surface.to_dict(orient='records')):
-#-- THIS IS STILL SLOW
 #            for t_i, rowdata in self.surface.iterrows():
             for i, (t_i, rowdata) in enumerate(surface.iterrows()):
                 hdr = rowdata.to_dict()
                 hdr['date'] = str(t_i.date())  # format [YYYY-MM-DD]
                 hdr['time'] = str(t_i.time())  # format [HH:MM:SS] UTC
                 f.write(snapshot.format(**hdr))
-#-- MAJOR SLOWDOWN HERE
+#-- MAJOR SLOWDOWN USING .loc[] TO ACCESS DATA
 #                df = self.profile.loc[self.profile.index == t_i]
                 df = profile.iloc[i*self.N:(i+1)*self.N]
                 for z_i, zdata in df.iterrows():
@@ -147,7 +149,9 @@ class MMCdata(object):
 
 
     def write_ascii_days(self,dpath,fname_fmt='%Y%m%d.dat'):
-        """Call write_ascii for individual days"""
+        """Wrapper for write_ascii() to write out a file for each
+        individual day
+        """
         days = np.unique(self.t.date)
         print('Days in data:',[str(day) for day in days])
         surface_date = self.surface.index.date
@@ -156,7 +160,6 @@ class MMCdata(object):
             surf = self.surface.loc[surface_date == day]
             prof = self.profile.loc[profile_date == day]
             fname = day.strftime(fname_fmt)
-            #print('Writing out '+fname)
             fpath = os.path.join(dpath,fname)
             if os.path.isfile(fpath):
                 print('Skipping existing file',fname)
