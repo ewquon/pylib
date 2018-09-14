@@ -71,7 +71,7 @@ totalTime = elapsedTime / completed
 print 'ESTIMATED TOTAL TIME:',myutils.smartTime(totalTime)
 if log_est_total_time:
     try:
-        with open(log_est_total_time,'a') as f:
+        with open(os.path.join(dpath,log_est_total_time),'a') as f:
             f.write(time.strftime('%x %X\tsimulated t={:.1f}s, N={:d}\tESTIMATED TOTAL TIME: {:s}\n'.format(curTime,nsteps,myutils.smartTime(totalTime))))
     except IOError:
         pass
