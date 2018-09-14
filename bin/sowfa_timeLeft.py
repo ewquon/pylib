@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 import sys
+import os
 import myutils
 import time
 import numpy as np
 
 log_est_total_time = 'estimated_total_time'
 
-with open('system/controlDict','r') as f:
+dpath = os.path.split(sys.argv[1])[0]
+
+with open(os.path.join(dpath,'system','controlDict'),'r') as f:
     for line in f:
 	if line.strip().startswith('application'):
 	    app = line.split()[1].split(';')[0]
