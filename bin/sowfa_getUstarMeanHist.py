@@ -55,9 +55,10 @@ uStarMean = np.array(uStarMean)
 for rst in restarts:
     rstTime = simTimes[simTimes > rst][0]
     i = np.nonzero(simTimes == rstTime)[0]
-    assert(len(i)==2)
-    simTimes = np.concatenate((simTimes[:i[0]], simTimes[i[1]:]))
-    uStarMean = np.concatenate((uStarMean[:i[0]], uStarMean[i[1]:]))
+    if len(i) == 2:
+        print('Pruning time series at t= {:f} s'.format(rstTime))
+        simTimes = np.concatenate((simTimes[:i[0]], simTimes[i[1]:]))
+        uStarMean = np.concatenate((uStarMean[:i[0]], uStarMean[i[1]:]))
 
 # if simulation still running, array lengths may differ
 Nt,Nu = len(simTimes),len(uStarMean)
