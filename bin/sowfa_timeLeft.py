@@ -1,14 +1,29 @@
 #!/usr/bin/env python
 import sys
 import os
+import glob
 import myutils
 import time
 import numpy as np
 
 log_est_total_time = 'estimated_total_time'
 
-dpath = os.path.split(sys.argv[1])[0]
+dpath = '.'
 
+makeplots = False
+if '-plot' in sys.argv:
+    makeplots = True
+    import matplotlib.pyplot as plt
+    sys.argv.remove('-plot')
+
+writehist = False
+if '-write' in sys.argv:
+    writehist = True
+    sys.argv.remove('-write')
+
+if len(sys.argv) > 1:
+    fpath = sys.argv[1]
+    dpath = os.path.split(fpath)[0]
 with open(os.path.join(dpath,'system','controlDict'),'r') as f:
     for line in f:
 	if line.strip().startswith('application'):
@@ -18,16 +33,11 @@ with open(os.path.join(dpath,'system','controlDict'),'r') as f:
         elif line.strip().startswith('endTime'): 
             endTime = float(line.split()[1][:-1])
 
-makeplots = False
-writehist = False
-for arg in sys.argv[1:]:
-    if arg.lower().strip() == '-plot':
-        import matplotlib.pyplot as plt
-        makeplots = True
-    elif arg.lower().strip() == '-write':
-        writehist = True
-    else:
-        logfile = arg
+if len(sys.argv) == 1:
+    import glob
+    logfiles = glob.glob('log.*'+app)
+    logfiles.sort()
+    fpath = logfiles[-1]
 
 nsteps = 0
 startTime = -1
@@ -35,7 +45,7 @@ simTimes = []
 clockTimes = []
 CourantMax = []
 try:
-    with open(logfile,'r') as f:
+    with open(fpath,'r') as f:
         for line in f:
             if line.startswith('Create mesh'):
                 startTime = float(line.split()[-1])
@@ -53,7 +63,7 @@ try:
 except NameError:
     sys.exit('USAGE: '+sys.argv[0]+' log_file')
 except IOError:
-    sys.exit('Problem reading '+logfile)
+    sys.exit('Problem reading '+fpath)
 
 completed = (curTime-startTime) / (endTime-startTime)
 
@@ -92,7 +102,7 @@ print time.strftime('Current date/time is %x %X')
 
 if writehist:
     N = min(len(simTimes),len(ctime_per_step))
-    with open(logfile+'.timing','w') as f:
+    with open(fpath+'.timing','w') as f:
         f.write(time.strftime('# Current system time: %x %X\n'))
         f.write('# step  simulation_time  wallclock_time_per_step\n')
         for i in range(N):
