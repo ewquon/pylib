@@ -6,6 +6,7 @@
 # result:
 #   postProcessing/surfaces/<setName>/<var>_<time>.vtk
 #
+from __future__ import print_function
 import os
 
 dirlist = []
@@ -38,7 +39,7 @@ sampleNames = []
 varNames = []
 extNames = []
 for timestep_dir in dirlist:
-    print 'Processing', timestep_dir
+    print('Processing', timestep_dir)
     for f in [ f for f in os.listdir(timestep_dir) if os.path.isfile(os.path.join(timestep_dir,f)) ]:
         if f.startswith('.'):
             continue
@@ -50,7 +51,7 @@ for timestep_dir in dirlist:
         fbasesplit = fbasename.split('_')
         var = fbasesplit[0]
         name = '_'.join(fbasesplit[1:])
-        print ' ',f,'( name=',name,' var=',var,' ext=',ext,')'
+        print(' ',f,'( name=',name,' var=',var,' ext=',ext,')')
         if name=='':
             name = 'timeSeries'
         if not name in sampleNames:
@@ -62,10 +63,13 @@ for timestep_dir in dirlist:
             extNames.append(ext)
 
 if not len(extNames)==1:
-    print 'Don''t know how to handle different extensions',extNames
+    print('Don''t know how to handle different extensions',extNames)
 if ext in extMapping:
     extNew = extMapping[ext]
 else: extNew = ext
+
+print('sample names: ',sampleNames)
+print('field names: ',varNames)
 
 indices = sorted(range(len(timesteps)), key=lambda k: timesteps[k])
 for sample in sampleNames:
@@ -83,7 +87,7 @@ for sample in sampleNames:
                 src = os.path.join( os.getcwd(), dname, var+'_'+sample+'.'+ext )
                 #dest = sample + os.sep + '%s_%s.%s' % (var,tname(timesteps[idx]),extNew)
                 dest = sample + os.sep + '%s_%s.%s' % (var,i,extNew)
-            print dest,'-->',src
+            print(dest,'-->',src)
             try:
                 os.symlink(src,dest)
             except OSError: pass
