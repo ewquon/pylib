@@ -28,6 +28,8 @@ for d in dirs:
 
 extMapping = dict(xy='xyz')
 
+underscoreNames = ['p_rgh']
+
 def tname(tval):
     # note: paraview doesn't seem to handle floats well...
     #return '%d' % (tval*10)
@@ -49,8 +51,15 @@ for timestep_dir in dirlist:
             continue
         fbasename,ext = os.path.splitext(f)
         ext = ext[1:]
+        origname = None
+        for exception in underscoreNames:
+            if exception in fbasename:
+                origname = exception
+                fbasename = fbasename.replace(exception,'TEMP')
         fbasesplit = fbasename.split('_')
         var = fbasesplit[0]
+        if origname is not None:
+            var = var.replace('TEMP',origname)
         name = '_'.join(fbasesplit[1:])
         if verbose:
             print('  {:s}\t(name={:s}, var={:s}, ext={:s})'.format(f,name,var,ext))
