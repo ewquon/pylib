@@ -81,6 +81,7 @@ else: extNew = ext
 
 print('sample names: ',sampleNames)
 print('field names: ',varNames)
+print('time steps: ',timesteps[0],'...',timesteps[-1])
 
 indices = sorted(range(len(timesteps)), key=lambda k: timesteps[k])
 for sample in sampleNames:
