@@ -79,10 +79,6 @@ if ext in extMapping:
     extNew = extMapping[ext]
 else: extNew = ext
 
-print('sample names: ',sampleNames)
-print('field names: ',varNames)
-print('time steps: ',timesteps[0],'...',timesteps[-1])
-
 indices = sorted(range(len(timesteps)), key=lambda k: timesteps[k])
 for sample in sampleNames:
     for var in varNames:
@@ -101,4 +97,8 @@ for sample in sampleNames:
                 os.symlink(src,dest)
             except OSError:
                 pass
+
+print('sample names: ',sampleNames)
+print('field names: ',varNames)
+print('time steps: ',len(timesteps),'[',timesteps[indices[0]],'...',timesteps[indices[-1]],']')
 
