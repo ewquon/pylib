@@ -1,5 +1,8 @@
 #!/bin/bash
-logfile=`ls log.*Solver | tail -n 1`
+#logfile=`ls log.*Solver* | tail -n 1`
+solver=`grep application system/controlDict | awk '{print $2}'`
+solver=${solver%;*}
+logfile=`ls -t log.*$solver | head -n 1`
 echo "Following $logfile"
 echo 'vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv'
 tail -f $logfile \
