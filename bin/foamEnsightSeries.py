@@ -26,6 +26,10 @@ if len(sys.argv) > 2:
     prefix = sys.argv[2]
 else:
     prefix = os.path.split(postdir)[1]
+casefile = prefix + '_series.case'
+if os.path.isfile(casefile):
+    raise IOError('Case file '+casefile+' exists')
+
 meshFile = prefix + prefixMeshFile
 solnFile = prefix + prefixSolnFile
 solnStr  = prefix + prefixSolnStr
@@ -97,7 +101,7 @@ time values:
 """
 targetMesh = os.path.join(outdir,meshFile)
 targetSoln = os.path.join(outdir,solnStr)
-with open(outdir+'.case','w') as f:
+with open(casefile,'w') as f:
     f.write(
             caseTemplate.format(meshFile=targetMesh,solnStr=targetSoln,Ntimes=Ntimes)
             )
