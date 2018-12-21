@@ -8,22 +8,28 @@
 #
 from __future__ import print_function
 import os
+import sys
 
 verbose = False
 
 dirlist = []
 timesteps = []
 
+if sys.argv > 1:
+    srcdir = sys.argv[1]
+else:
+    srcdir = '.'
+
 #dirs=*.*
 #curdir=`pwd`
-dirs = os.walk('.').next()[1]
+dirs = os.walk(srcdir).next()[1]
 for d in dirs:
     try: 
         step = float(d) # need this to verify this is a time-step dir!
     except ValueError:
         pass
     else:
-        dirlist.append(d)
+        dirlist.append(os.path.join(srcdir,d))
         timesteps.append(step)
 
 extMapping = dict(xy='xyz')
@@ -46,7 +52,9 @@ extNames = []
 for timestep_dir in dirlist:
     if verbose:
         print('Processing', timestep_dir)
-    for f in [ f for f in os.listdir(timestep_dir) if os.path.isfile(os.path.join(timestep_dir,f)) ]:
+    filelist = [ f for f in os.listdir(timestep_dir)
+                 if os.path.isfile(os.path.join(timestep_dir,f)) ]
+    for f in filelist:
         if f.startswith('.'):
             continue
         fbasename,ext = os.path.splitext(f)
