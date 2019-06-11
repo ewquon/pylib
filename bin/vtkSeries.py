@@ -15,32 +15,27 @@ verbose = False
 dirlist = []
 timesteps = []
 
-if sys.argv > 1:
+if len(sys.argv) > 1:
     srcdir = sys.argv[1]
 else:
     srcdir = '.'
 
 #dirs=*.*
 #curdir=`pwd`
-dirs = os.walk(srcdir).next()[1]
-for d in dirs:
+for dname in os.listdir(srcdir):
+    if not os.path.isdir(dname):
+        continue
     try: 
-        step = float(d) # need this to verify this is a time-step dir!
+        step = float(dname) # need this to verify this is a time-step dir!
     except ValueError:
         pass
     else:
-        dirlist.append(os.path.join(srcdir,d))
+        dirlist.append(os.path.join(srcdir,dname))
         timesteps.append(step)
 
 extMapping = dict(xy='xyz')
 
 underscoreNames = ['p_rgh']
-
-def tname(tval):
-    # note: paraview doesn't seem to handle floats well...
-    #return '%d' % (tval*10)
-    #return '%d' % (tval*1000)
-    return '%d' % (tval)
 
 #-----------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------
