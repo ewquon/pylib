@@ -2,14 +2,14 @@
 import sys
 import os
 
-dirs = os.walk('.').next()[1]
+dirs = [ dname for dname in os.listdir('.') if os.path.isdir(dname) ]
 
 dirlist = []
 numlist = []
 for d in dirs:
     try: 
         step = float(d)
-	numlist.append(step)
+        numlist.append(step)
         dirlist.append(d)
     except ValueError: pass
 
@@ -20,7 +20,7 @@ if len(sys.argv) > 1:
     sep = sys.argv[1]
 else: sep = ' '
 
-#print ' '.join(dirlist)
-#print ' '.join([dirlist[i] for i in indices])
-#print ' '.join([dirlist[i] for i in indices]).strip()
-print sep.join([dirlist[i] for i in indices]).strip()
+#print(' '.join(dirlist))
+#print(' '.join([dirlist[i] for i in indices]))
+#print(' '.join([dirlist[i] for i in indices]).strip())
+print(sep.join([dirlist[i] for i in indices]).strip())
