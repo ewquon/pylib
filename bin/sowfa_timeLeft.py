@@ -24,10 +24,11 @@ if '-write' in sys.argv:
 if len(sys.argv) > 1:
     fpath = sys.argv[1]
     dpath = os.path.split(fpath)[0]
+
 with open(os.path.join(dpath,'system','controlDict'),'r') as f:
     for line in f:
-	if line.strip().startswith('application'):
-	    app = line.split()[1].split(';')[0]
+        if line.strip().startswith('application'):
+            app = line.split()[1].split(';')[0]
         elif line.strip().startswith('deltaT'): 
             dt = float(line.split()[1][:-1])
         elif line.strip().startswith('endTime'): 
@@ -49,7 +50,8 @@ try:
         for line in f:
             if line.startswith('Create mesh'):
                 startTime = float(line.split()[-1])
-                if startTime > 0: print 'Detected restart from t =',startTime
+                if startTime > 0:
+                    print('Detected restart from t =',startTime)
             elif line.startswith('Time ='):
                 curTime = float(line.split()[2])
                 simTimes.append(curTime)
@@ -67,18 +69,18 @@ except IOError:
 
 completed = (curTime-startTime) / (endTime-startTime)
 
-print 'Simulation is at currently at t = %.1f and will end at %.1f (%.1f%% complete)' \
-    % (curTime, endTime, 100*completed)
-print app,'has been running for',nsteps,'steps'
-print 'Elapsed time:',myutils.smartTime(elapsedTime)
+print('Simulation is at currently at t = {:.1f} and will end at {:.1f} ({:.1f}% complete)'.format(
+      curTime, endTime, 100*completed))
+print(app,'has been running for',nsteps,'steps')
+print('Elapsed time:',myutils.smartTime(elapsedTime))
 
 timestep_size = np.diff(np.array(simTimes))
 ctime_per_step = np.diff(np.array(clockTimes))
-print 'Average/min/max time per step', \
-    np.mean(ctime_per_step), np.min(ctime_per_step), np.max(ctime_per_step)
+print('Average/min/max time per step', \
+    np.mean(ctime_per_step), np.min(ctime_per_step), np.max(ctime_per_step))
 
 totalTime = elapsedTime / completed
-print 'ESTIMATED TOTAL TIME:',myutils.smartTime(totalTime)
+print('ESTIMATED TOTAL TIME:',myutils.smartTime(totalTime))
 if log_est_total_time:
     try:
         with open(os.path.join(dpath,log_est_total_time),'a') as f:
@@ -87,18 +89,18 @@ if log_est_total_time:
         pass
 
 remainingTime = totalTime - elapsedTime
-print 'Remaining time:',myutils.smartTime(remainingTime)
+print('Remaining time:',myutils.smartTime(remainingTime))
 
 timeStepsLeft = (endTime-curTime) / timestep_size[-1]
 remainingTimeOpt = timeStepsLeft * ctime_per_step[-1]
-print 'Remaining time (based on clocktime for last timestep):',myutils.smartTime(remainingTimeOpt)
-print ' ',timeStepsLeft,'time steps left'
-print '  ~',ctime_per_step[-1],'clock time per step'
+print('Remaining time (based on clocktime for last timestep):',myutils.smartTime(remainingTimeOpt))
+print(' ',timeStepsLeft,'time steps left')
+print('  ~',ctime_per_step[-1],'clock time per step')
 
-print 'Average/min/max maximum Courant number per step', \
-    np.mean(CourantMax), np.min(CourantMax), np.max(CourantMax)
+print('Average/min/max maximum Courant number per step', \
+    np.mean(CourantMax), np.min(CourantMax), np.max(CourantMax))
 
-print time.strftime('Current date/time is %x %X')
+print(time.strftime('Current date/time is %x %X'))
 
 if writehist:
     N = min(len(simTimes),len(ctime_per_step))
@@ -120,6 +122,6 @@ if makeplots:
         plt.xlabel('iteration')
         plt.ylabel('simulated timestep [s]')
     else:
-        print 'Skipping timestep plot for constant dt=',np.mean(timestep_size)
+        print('Skipping timestep plot for constant dt=',np.mean(timestep_size))
 
     plt.show()
