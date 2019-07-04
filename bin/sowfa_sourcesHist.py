@@ -14,11 +14,11 @@ def srcFilePath(src): return os.path.join(prefix,'Source'+src+'History')
 
 for src in sources:
     if not os.path.isfile( srcFilePath(src) ):
-        print 'source history files not found, did you mean...'
+        print('source history files not found, did you mean...')
         for d in os.listdir(prefix):
             dname = os.path.join(prefix,d)
             if os.path.isdir(dname):
-                print ' ',dname
+                print(' ',dname)
         sys.exit()
 
 def readSourceFile(src):
@@ -40,7 +40,7 @@ def readSourceFile(src):
             Svals = vals[2:]
             if len(Svals)>1: assert(len(Svals)==len(z))
             S.append(Svals)
-    print 'Read',readStr,'from',fname
+    print('Read',readStr,'from',fname)
     return np.array(z),t,dt,np.array(S)
 
 fig,ax = plt.subplots(nrows=len(sources)+1,sharex=True)
@@ -55,7 +55,7 @@ for isrc,src in enumerate(sources):
     if len(S[0,:]) > 1: # we actually used computed sources...
         for ip,pltz in enumerate(plotHeights):
             iz = np.argmin(np.abs(z-pltz))
-            print 'Plotting source',src,'at',z[iz]
+            print('Plotting source',src,'at',z[iz])
             r = float(ip)/(len(plotHeights)-1)
             ax[isrc+1].plot(t,S[:,iz],color=[1-r,0,0])
     ax[isrc+1].set_ylabel(r'{:s}'.format(src))
