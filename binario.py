@@ -4,13 +4,15 @@ import struct
 import numpy as np
 
 class binaryfile:
-    def __init__(self,path):
+    def __init__(self,path,verbose=True):
         self.path = path
         self.f = open(path,'rb')
+        self.verbose = verbose
 
     def __enter__(self):
         # Called when used with the 'with' statement
-        print '(Created new binary file instance)'
+        if self.verbose:
+            print('(Created new binary file instance)')
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
@@ -21,9 +23,10 @@ class binaryfile:
         self.f.close()
         # handle exceptions
         if exc_type is not None:
-            print exc_type, exc_value, traceback
+            print(exc_type, exc_value, traceback)
             # return False # uncomment to pass exception through
-        print '(Removed binary file instance)'
+        if self.verbose:
+            print('(Removed binary file instance)')
         return self
 
     def read(self,N=1): return self.f.read(N)
